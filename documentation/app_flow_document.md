@@ -1,41 +1,52 @@
 # App Flow Document
 
+# App Flow Document
+
 ## Onboarding and Sign-In/Sign-Up
+When a new user first arrives at the application URL, they see a clean landing page that briefly explains the AI Virtual Assistant’s capabilities and invites them to either sign up or sign in. The user can choose to register with their email address and a secure password by filling out a simple registration form that asks for their name, email, and password. Once they submit the form, a confirmation message appears and they are prompted to verify their email before proceeding. If the user already has an account, they click the sign-in link, enter their email and password, and are taken directly into the application.
 
-When a new visitor arrives at the application’s root URL, they land on a welcome page that offers clear buttons or links to either create an account or sign in. Clicking on the “Sign Up” link takes the visitor to a registration page where they enter their email address and choose a password. Once they submit the form, the application sends a POST request to the authentication API endpoint, which handles password hashing and user creation. If registration succeeds, the new user is automatically signed in and redirected to the dashboard. If there are validation errors, such as a password that is too short or an email already in use, the form reappears with inline messages explaining what must be corrected.
+If a returning user forgets their password, they click the “Forgot Password” link on the sign-in page. They enter their registered email address and receive a password reset link. By following that link, they land on a reset form where they can choose a new password. After resetting the password successfully, they are redirected to the sign-in page to log in with their updated credentials.
 
-For returning users, clicking the “Sign In” link from the welcome page or from a persistent header link opens the login form. They input their email and password, and upon submission the app sends a request to the same authentication API with login credentials. A successful login leads directly to the dashboard. If the credentials are invalid, the page reloads with a clear error message prompting the user to try again.
-
-Signing out is available from within the dashboard via a logout button in the main navigation or header. When clicked, the application clears the user’s session or token, and then navigates back to the welcome page. Currently, there is no built-in password recovery or reset flow in this version, so users who forget their password are prompted to contact support for assistance.
+At any time after signing in, the user may select a “Sign Out” option in the top navigation bar to end their session. This returns them to the landing page, where they must sign in again to access any protected sections.
 
 ## Main Dashboard or Home Page
+After signing in, the user is greeted by the main dashboard, which is the central hub of the application. Across the top sits a header with the app name on the left and the user’s avatar or initials on the right. On the left side of the screen, a vertical navigation bar provides quick access to the dashboard overview, the AI chat interface, the calendar view, the to-do list section, and the expense tracker area.
 
-After authentication, the user lands on the dashboard, which serves as the main home page. The dashboard is wrapped in a layout that displays a header bar and a sidebar navigation tailored for logged-in users. The header bar typically shows the application’s logo on the left and a Logout link on the right. The sidebar sits on the left side of the screen and may contain links back to the dashboard’s main panel or to future features.
-
-The central area of the dashboard page displays data pulled from a static JSON file. This content might appear in cards or tables to give users a quick overview of information. All styling for this section comes from a dedicated theme stylesheet to keep the look consistent. Users can click items or links here, but those actions are placeholders for future dynamic data features.
-
-From this dashboard view, users may revisit the welcome page or any other main area by selecting navigation items in the sidebar or header. The layout ensures that the logout link remains accessible at all times, and that the user cannot leave the authenticated area without signing out manually or having their session expire.
+The default view in the main content area is a high-level summary panel showing today’s schedule on a small calendar widget, a count of pending to-do items, and a snapshot of recent expense entries. Clicking on any of these widgets expands that section into its full page, allowing deeper interaction. Each navigation item in the sidebar leads the user directly to its respective page, and the header’s back button or home icon returns the user to this overview at any time.
 
 ## Detailed Feature Flows and Page Transitions
 
-When a visitor lands on the root page, JavaScript on the client reads the route and displays either the welcome interface or automatically redirects them to the dashboard if a valid session exists. For new user registration, the user clicks the Sign Up link and is taken to the sign-up page. The sign-up form collects email and password fields, and on submission it triggers a client-side POST to the API route. Once the API responds with success, the client redirects the user to the dashboard page.
+### AI Chat Interface
+When the user clicks on the chat link in the sidebar, they land on a full-screen chat interface. A message history pane takes up most of the page, showing past interactions with the AI assistant. At the bottom is an input field where the user types a conversational command like “Schedule a doctor appointment next Tuesday at 3pm.” As soon as they submit the message, a loading indicator appears. Behind the scenes, the chat page calls the API route `api/chat`, passing the user’s message along with their session token. Once the API returns a structured response from GPT-4o, the response appears in the chat history pane. If the AI instructs the system to create a calendar event, a confirmation bubble appears and the new event is saved to the database.
 
-Returning users choose the Sign In link and arrive at the sign-in page, which offers the same fields as the sign-up page but is wired to authenticate rather than create a new account. On form submit, the user sees a loading indication until the API confirms valid credentials. If successful, the client pushes the dashboard route and loads the dashboard layout and content.
+### Calendar View
+From the sidebar, the user can select the calendar link to open the full calendar page. A monthly grid displays all the user’s events, each showing its title and time. To add a new event, the user clicks on a date. A modal dialog pops up with fields for event name, date, time, and description. After filling in the details and clicking save, the modal closes and the new event appears instantly in the calendar. The page fetches the updated event list from the database so the calendar stays in sync. To edit or delete an event, the user clicks on an existing event in the grid, which reopens the modal for editing or confirms deletion.
 
-All authenticated pages reside under the `/dashboard` path. When the user attempts to navigate directly to `/dashboard` without a valid session, server-side redirection logic intercepts the request and sends the user back to the sign-in page. This ensures that protected content never shows to unauthorized visitors.
+### To-Do List Section
+Selecting the to-do list link in the sidebar brings up a list of task cards, each showing its title, due date, and completion toggle. At the top of this page is an “Add Task” button. Clicking it reveals a small inline form where the user types a task name and optional due date. After adding, the new task appears in the list below. Toggling the task’s checkbox marks it as complete and updates its style. The completed toggle updates the record in the database immediately. If the user wants to remove a task, they click a small delete icon next to the task, and the item is removed after confirming the action.
 
-Signing out happens entirely on the client side by calling an API or clearing a cookie, then navigating back to the welcome page. The client code listens for the logout action, invalidates the current session, and then reloads or reroutes the application state to the landing interface.
+### Expense Tracker Area
+When the user selects the expenses link from the sidebar, they see a table of expense entries showing date, category, amount, and notes. A chart above the table displays spending trends over the last month. To log a new expense, the user clicks “New Expense,” filling out a form that requests date, amount, category, and description. On submission, the table and chart refresh to show the new entry. The table can be sorted by date or amount, and the user can search or filter by category. Clicking on an existing expense row opens a detail view where the user can edit or delete the entry, with changes saved to the database in real time.
 
 ## Settings and Account Management
+The user accesses account settings by clicking their avatar in the header and selecting “Profile.” On the profile page, they can update personal information like display name and email address. To change their password, they click the “Change Password” section, enter the current password and a new password twice for confirmation, and submit. The application validates the current password before saving the update. There is also a notifications section where the user can toggle email reminders for upcoming events and daily summary digests.
 
-At present, users cannot change profile information, update their email, or configure notifications from within the interface. The only account management available is the ability to sign out from any dashboard view. In future iterations, a dedicated settings page could be added to let users update personal details or adjust preferences, but in this version, those capabilities are not provided. After signing out, users always return to the welcome page and must sign in again to regain access to the dashboard.
+If the app offers subscription plans, the user finds a billing tab under settings where they can view their current plan, see upcoming charges, update payment methods, or upgrade to a premium tier. All changes in settings redirect back to the main dashboard once the update is complete.
 
 ## Error States and Alternate Paths
+If the user enters incorrect credentials at sign-in, a clear in-line error message appears above the form, prompting them to check their email or password. During sign-up, if the email is already in use or the password fails complexity checks, the form displays an appropriate error. When resetting a password, an expired or invalid reset link shows a fallback page instructing the user to request a new link.
 
-If a user types an incorrect email or password on the sign-in page, the authentication API responds with an error status and a message. The form then displays an inline alert near the input fields explaining the issue, such as “Invalid email or password,” allowing the user to correct and resubmit. During sign up, validation errors like a missing field or weak password appear immediately under the relevant input.
-
-Network failures trigger a generic error notification at the top of the form, informing the user that the request could not be completed and advising them to check their connection. If the dashboard content fails to load due to a broken or missing static data file, a fallback message appears in the main panel stating that data could not be loaded and suggesting a page refresh. Trying to access a protected route without a session sends the user to the sign-in page automatically, making it clear that authentication is required.
+While navigating the app, if the network connection is lost, a banner appears at the top warning of offline status. Actions that require the server, like saving a task or sending a chat message, queue locally and retry automatically once connectivity is restored. If a server error occurs during a chat API call or database operation, the chat pane or form fields display an error message with a retry button.
 
 ## Conclusion and Overall App Journey
+A typical user journey begins with landing on the home page, signing up with an email and password, then confirming their email to log in. Once authenticated, they explore the dashboard overview and use the sidebar to navigate between the AI chat, calendar, to-do list, and expense tracker. They interact conversationally with the AI assistant to create events and tasks, manage entries through intuitive page workflows, and personalize their profile and notifications in the settings area. Error messages guide them through any hiccups, and the sign-out link returns them safely to the landing page. Over time, the user builds a complete schedule, task list, and expense log, all managed seamlessly via both graphical interfaces and natural-language chat commands.
 
-A typical user journey starts with visiting the application’s root URL, signing up with an email and password, then being welcomed in the dashboard area that displays sample data. Returning users go directly through the sign-in page to the dashboard. Throughout each step, clear messages guide the user in case of errors or invalid input. The layout remains consistent, with a header and navigation ensuring that users always know where they are and can sign out at any time. This flow lays the foundation for adding dynamic data, user profile management, and richer features in future releases.
+---
+**Document Details**
+- **Project ID**: 2518caaa-9e53-4baf-9eb4-78aa128bc12b
+- **Document ID**: 5e8d49ec-2539-467e-9afb-f52f891fcefd
+- **Type**: custom
+- **Custom Type**: app_flow_document
+- **Status**: completed
+- **Generated On**: 2025-10-11T09:52:55.471Z
+- **Last Updated**: N/A

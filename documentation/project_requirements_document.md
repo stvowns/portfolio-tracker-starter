@@ -1,117 +1,96 @@
-# Project Requirements Document: codeguide-starter
+# Project Requirements Document
 
----
+# AI Planner Assistant – Project Requirements Document (PRD)
 
 ## 1. Project Overview
 
-The **codeguide-starter** project is a boilerplate web application that provides a ready-made foundation for any web project requiring secure user authentication and a post-login dashboard. It sets up the common building blocks—sign-up and sign-in pages, API routes to handle registration and login, and a simple dashboard interface driven by static data. By delivering this skeleton, it accelerates development time and ensures best practices are in place from day one.
+The AI Planner Assistant is a full-stack web application that lets users manage their schedules, tasks, and expenses through a conversational interface powered by GPT-4o. Built on a modern Next.js 15 template, it provides secure user authentication, a dynamic dashboard, and an AI chat page where natural language commands translate into database actions—like creating calendar events or logging expenses. This system ensures each user’s data is private, organized, and easily accessible.
 
-This starter kit is being built to solve the friction developers face when setting up repeated common tasks: credential handling, session management, page routing, and theming. Key objectives include: 1) delivering a fully working authentication flow (registration & login), 2) providing a gated dashboard area upon successful login, 3) establishing a clear, maintainable project structure using Next.js and TypeScript, and 4) demonstrating a clean theming approach with global and section-specific CSS. Success is measured by having an end-to-end login journey in under 200 lines of code and zero runtime type errors.
-
----
+We’re building this assistant to simplify everyday planning: instead of clicking through multiple forms, users just type or speak simple commands (e.g., “Schedule a dentist appointment next Wednesday at 3 PM”). The key success criteria are: 1) Users can sign up, log in, and see a personalized dashboard; 2) The AI reliably interprets commands into tasks, events, and expenses; 3) Data remains secure and consistent; and 4) The interface is fast, intuitive, and visually consistent.
 
 ## 2. In-Scope vs. Out-of-Scope
 
-### In-Scope (Version 1)
-- User registration (sign-up) form with validation
-- User login (sign-in) form with validation
-- Next.js API routes under `/api/auth/route.ts` handling:
-  - Credential validation
-  - Password hashing (e.g., bcrypt)
-  - Session creation or JWT issuance
-- Protected dashboard pages under `/dashboard`:
-  - `layout.tsx` wrapping dashboard content
-  - `page.tsx` rendering static data from `data.json`
-- Global application layout in `/app/layout.tsx`
-- Basic styling via `globals.css` and `dashboard/theme.css`
-- TypeScript strict mode enabled
+**In-Scope (Version 1):**
+- User sign-up, sign-in, and session management (Better Auth)
+- Protected dashboard showing a calendar, to-do list, and expense tracker with user-specific data
+- AI chat interface (`/app/chat`) for free-form commands
+- API route (`/api/chat`) that calls OpenAI GPT-4o, parses JSON output, and performs CRUD operations via Drizzle ORM
+- Database schema for users, calendar events, tasks, and expenses (PostgreSQL + Drizzle)
+- Core UI built with Tailwind CSS v4 and shadcn/ui components
+- Docker configuration for local development with PostgreSQL
 
-### Out-of-Scope (Later Phases)
-- Integration with a real database (PostgreSQL, MongoDB, etc.)
-- Advanced authentication flows (password reset, email verification, MFA)
-- Role-based access control (RBAC)
-- Multi-tenant or white-label theming
-- Unit, integration, or end-to-end testing suites
-- CI/CD pipeline and production deployment scripts
-
----
+**Out-of-Scope (Later Phases):**
+- Push or email notifications/reminders
+- Recurring events or complex scheduling rules
+- Integration with external calendars (Google, Outlook)
+- Multi-tenant or team collaboration features
+- Mobile-specific UI (native apps)
+- Advanced analytics or budget forecasting
 
 ## 3. User Flow
 
-A new visitor lands on the root URL and sees a welcome page with options to **Sign Up** or **Sign In**. If they choose Sign Up, they fill in their email, password, and hit “Create Account.” The form submits to `/api/auth/route.ts`, which hashes the password, creates a new user session or token, and redirects them to the dashboard. If any input is invalid, an inline error message explains the issue (e.g., “Password too short”).
+A new visitor lands on the welcome page and sees prompts to sign up or log in. They create an account with email and password (Better Auth handles verification). Upon successful login, they are redirected to a protected dashboard where a left sidebar offers links to “Dashboard,” “Chat,” and “Profile.” The main area displays today’s events on a calendar, a list of pending tasks, and a summary of recent expenses.
 
-Once authenticated, the user is taken to the `/dashboard` route. Here they see a sidebar or header defined by `dashboard/layout.tsx`, and the main panel pulls in static data from `data.json`. They can log out (if that control is present), but otherwise their entire session is managed by server-side cookies or tokens. Returning users go directly to Sign In, submit credentials, and upon success they land back on `/dashboard`. Any unauthorized access to `/dashboard` redirects back to Sign In.
-
----
+To interact with the AI, the user clicks “Chat.” This opens a conversation panel with a message list and input box at the bottom. The user types a command like “Add a $50 grocery expense for Friday.” The app sends it to `/api/chat`; after processing with GPT-4o, the backend returns structured JSON, automatically inserting a new expense into the database. When the user returns to the dashboard, the expense appears in the tracker and charts.
 
 ## 4. Core Features
 
-- **Sign-Up Page (`/app/sign-up/page.tsx`)**: Form fields for email & password, client-side validation, POST to `/api/auth`.
-- **Sign-In Page (`/app/sign-in/page.tsx`)**: Form fields for email & password, client-side validation, POST to `/api/auth`.
-- **Authentication API (`/app/api/auth/route.ts`)**: Handles both registration and login based on HTTP method, integrates password hashing (bcrypt) and session or JWT logic.
-- **Global Layout (`/app/layout.tsx` + `globals.css`)**: Shared header, footer, and CSS resets across all pages.
-- **Dashboard Layout (`/app/dashboard/layout.tsx` + `dashboard/theme.css`)**: Sidebar or top nav for authenticated flows, section-specific styling.
-- **Dashboard Page (`/app/dashboard/page.tsx`)**: Reads `data.json`, renders it as cards or tables.
-- **Static Data Source (`/app/dashboard/data.json`)**: Example dataset to demo dynamic rendering.
-- **TypeScript Configuration**: `tsconfig.json` with strict mode and path aliases (if any).
-
----
+- **Authentication & Authorization**: Sign-up, sign-in, session management, protected routes.
+- **Dashboard**: Calendar view (events), to-do list, expense summary with interactive charts.
+- **AI Chat Interface**: Conversational UI for natural language commands.
+- **Chat API Endpoint**: `/api/chat` that validates sessions, calls GPT-4o, parses structured output, and triggers database operations.
+- **Database Models**: `users`, `calendarEvents`, `tasks`, `expenses` via PostgreSQL and Drizzle ORM.
+- **UI Components**: Shadcn/ui building blocks (Buttons, Inputs, Cards, Tables, Charts).
+- **Docker Setup**: One-command local environment with Next.js server and PostgreSQL.
+- **Error Handling**: Graceful UI feedback for API or network failures.
 
 ## 5. Tech Stack & Tools
 
-- **Framework**: Next.js (App Router) for file-based routing, SSR/SSG, and API routes.
-- **Language**: TypeScript for type safety.
-- **UI Library**: React 18 for component-based UI.
-- **Styling**: Plain CSS via `globals.css` (global reset) and `theme.css` (sectional styling). Can easily migrate to CSS Modules or Tailwind in the future.
-- **Backend**: Node.js runtime provided by Next.js API routes.
-- **Password Hashing**: bcrypt (npm package).
-- **Session/JWT**: NextAuth.js or custom JWT logic (to be decided in implementation).
-- **IDE & Dev Tools**: VS Code with ESLint, Prettier extensions. Optionally, Cursor.ai for AI-assisted coding.
-
----
+- **Frontend**: Next.js 15 (App Router), React + TypeScript
+- **Styling**: Tailwind CSS v4, shadcn/ui component library
+- **Authentication**: Better Auth (NextAuth-like flow)
+- **Backend**: Next.js API Routes, Node.js 18+
+- **Database**: PostgreSQL, Drizzle ORM for type-safe schema and queries
+- **AI Integration**: OpenAI GPT-4o (function-calling for structured JSON)
+- **Containerization**: Docker (Next.js + PostgreSQL services)
+- **Development Tools**: VS Code with ESLint, Prettier
+- **State Management**: React hooks (useState, useEffect) or optional Zustand for chat history
 
 ## 6. Non-Functional Requirements
 
-- **Performance**: Initial page load under 200 ms on a standard broadband connection. API responses under 300 ms.
-- **Security**:
-  - HTTPS only in production.
-  - Proper CORS, CSRF protection for API routes.
-  - Secure password storage (bcrypt with salt).
-  - No credentials or secrets checked into version control.
-- **Scalability**: Structure must support adding database integration, caching layers, and advanced auth flows without rewiring core app.
-- **Usability**: Forms should give real-time feedback on invalid input. Layout must be responsive (mobile > 320 px).
-- **Maintainability**: Code must adhere to TypeScript strict mode. Linting & formatting enforced by ESLint/Prettier.
-
----
+- **Performance**: Page loads under 500ms; AI chat response under 2 seconds (network permitting).
+- **Scalability**: Modular API routes and database schemas allow horizontal scaling.
+- **Security**: All API routes require authenticated sessions; use HTTPS in production; store secrets in environment variables; follow OWASP Top 10 best practices.
+- **Reliability**: Automatic retries for transient DB or AI API errors, with user-friendly error messages.
+- **Usability**: Accessible UI components (ARIA labels, keyboard navigation), consistent styling.
+- **Maintainability**: Clean folder structure, TypeScript types for data contracts, documented code and prompts.
 
 ## 7. Constraints & Assumptions
 
-- **No Database**: Dashboard uses only `data.json`; real database integration is deferred.
-- **Node Version**: Requires Node.js >= 14.
-- **Next.js Version**: Built on Next.js 13+ App Router.
-- **Authentication**: Assumes availability of bcrypt or NextAuth.js at implementation time.
-- **Hosting**: Targets serverless or Node.js-capable hosting (e.g., Vercel, Netlify).
-- **Browser Support**: Modern evergreen browsers; no IE11 support required.
-
----
+- **OpenAI Availability**: Assumes GPT-4o API key is provisioned and rate limits are respected.
+- **Environment**: Node 18+ runtime, Docker installed locally, modern browser support (ES6+).
+- **Data Volume**: Initial user base expected to be small to medium; no sharding needed in V1.
+- **Prompt Engineering**: Relies on well-crafted prompts and function schemas to ensure consistent AI output.
+- **Network**: Users have stable internet for chat interactions.
 
 ## 8. Known Issues & Potential Pitfalls
 
-- **Static Data Limitation**: `data.json` is only for demo. A real API or database will be needed to avoid stale data.
-  *Mitigation*: Define a clear interface for data fetching so swapping to a live endpoint is trivial.
-
-- **Global CSS Conflicts**: Using global styles can lead to unintended overrides.
-  *Mitigation*: Plan to migrate to CSS Modules or utility-first CSS in Phase 2.
-
-- **API Route Ambiguity**: Single `/api/auth/route.ts` handling both sign-up and sign-in could get complex.
-  *Mitigation*: Clearly branch on HTTP method (`POST /register` vs. `POST /login`) or split into separate files.
-
-- **Lack of Testing**: No test suite means regressions can slip in.
-  *Mitigation*: Build a minimal Jest + React Testing Library setup in an early iteration.
-
-- **Error Handling Gaps**: Client and server must handle edge cases (network failures, malformed input).
-  *Mitigation*: Define a standard error response schema and show user-friendly messages.
+- **Unpredictable AI Responses**: GPT may return unexpected JSON shapes. Mitigation: validate and sanitize AI output, provide fallback UI flows for manual input.
+- **API Rate Limits**: Exceeding OpenAI limits can block chat. Mitigation: implement exponential backoff and inform user of delays.
+- **Database Migrations**: Schema updates can break existing data. Mitigation: use migration tools, keep dev/prod schemas in sync.
+- **Docker Performance**: On some systems, Docker-mounted volumes can be slow. Mitigation: document volume caching or local Postgres installation as alternative.
+- **Error Handling Gaps**: Unhandled exceptions in `/api/chat` could crash the route. Mitigation: wrap calls in try/catch and return structured error messages.
 
 ---
 
-This PRD should serve as the single source of truth for the AI model or any developer generating the next set of technical documents: Tech Stack Doc, Frontend Guidelines, Backend Structure, App Flow, File Structure, and IDE Rules. It contains all functional and non-functional requirements with no ambiguity, enabling seamless downstream development.
+This PRD provides a clear, unambiguous blueprint for the AI Planner Assistant. It outlines what to build, how users will interact with it, and the technical foundation required—enabling the AI or your development team to generate detailed technical specifications, UI wireframes, and implementation plans without missing any critical information.
+
+---
+**Document Details**
+- **Project ID**: 2518caaa-9e53-4baf-9eb4-78aa128bc12b
+- **Document ID**: aff0554d-89b0-4997-ba98-6ae68e3a1752
+- **Type**: custom
+- **Custom Type**: project_requirements_document
+- **Status**: completed
+- **Generated On**: 2025-10-11T09:51:43.437Z
+- **Last Updated**: N/A
