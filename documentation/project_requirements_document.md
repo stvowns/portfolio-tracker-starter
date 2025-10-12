@@ -1,96 +1,99 @@
 # Project Requirements Document
 
-# AI Planner Assistant – Project Requirements Document (PRD)
+# Project Requirements Document
 
 ## 1. Project Overview
 
-The AI Planner Assistant is a full-stack web application that lets users manage their schedules, tasks, and expenses through a conversational interface powered by GPT-4o. Built on a modern Next.js 15 template, it provides secure user authentication, a dynamic dashboard, and an AI chat page where natural language commands translate into database actions—like creating calendar events or logging expenses. This system ensures each user’s data is private, organized, and easily accessible.
+This project is a starter boilerplate for a multi-asset portfolio tracker web application. It provides the essential building blocks—secure user authentication, a protected dashboard, a scalable database schema, a modern UI component library, and dynamic theming—so developers can rapidly build a personalized portfolio tracker for assets like gold, silver, stocks, funds, and cryptocurrency. By offering a well-architected Next.js and TypeScript foundation, the codebase eliminates repetitive setup work and lets teams focus on adding domain-specific features such as financial calculations, live price feeds, and advanced visualizations.
 
-We’re building this assistant to simplify everyday planning: instead of clicking through multiple forms, users just type or speak simple commands (e.g., “Schedule a dentist appointment next Wednesday at 3 PM”). The key success criteria are: 1) Users can sign up, log in, and see a personalized dashboard; 2) The AI reliably interprets commands into tasks, events, and expenses; 3) Data remains secure and consistent; and 4) The interface is fast, intuitive, and visually consistent.
+The core problem this starter solves is speeding up time-to-market while enforcing best practices in security, type safety, and UI consistency. It’s being built to ensure that every new feature—whether manual transaction entry, real-time market integration, or premium subscription logic—can slot into an existing folder structure and data model without confusion or rework. Key success criteria for the first version are: a working sign-up/sign-in flow; a CRUD interface for tracking asset transactions; a dynamic dashboard showing aggregated portfolio data; and a code structure that can be extended smoothly in future phases.
 
 ## 2. In-Scope vs. Out-of-Scope
 
-**In-Scope (Version 1):**
-- User sign-up, sign-in, and session management (Better Auth)
-- Protected dashboard showing a calendar, to-do list, and expense tracker with user-specific data
-- AI chat interface (`/app/chat`) for free-form commands
-- API route (`/api/chat`) that calls OpenAI GPT-4o, parses JSON output, and performs CRUD operations via Drizzle ORM
-- Database schema for users, calendar events, tasks, and expenses (PostgreSQL + Drizzle)
-- Core UI built with Tailwind CSS v4 and shadcn/ui components
-- Docker configuration for local development with PostgreSQL
+**In-Scope (Version 1)**
+- Secure user sign-up and sign-in using Better Auth
+- A protected dashboard page showing placeholder or manually entered portfolio summaries
+- Database schemas for Users, Assets, and Transactions defined via Drizzle ORM + PostgreSQL
+- CRUD operations (Create, Read, Update, Delete) for manual asset transactions
+- Reusable UI components (cards, tables, forms) via shadcn/ui and Tailwind CSS
+- Dark/light theme toggle
+- API route skeletons in `app/api/` for future external price feed integration
+- Docker and docker-compose configuration for local development and deployment
 
-**Out-of-Scope (Later Phases):**
-- Push or email notifications/reminders
-- Recurring events or complex scheduling rules
-- Integration with external calendars (Google, Outlook)
-- Multi-tenant or team collaboration features
-- Mobile-specific UI (native apps)
-- Advanced analytics or budget forecasting
+**Out-of-Scope (Planned for Later Phases)**
+- Real-time price feed integration (automating market data fetch)
+- Data visualizations (charts for historical performance)
+- Multi-currency support and exchange rate conversions
+- Push notifications or email alerts for portfolio changes
+- Freemium model or subscription management
+- Native mobile app (React Native or WebView wrapper)
+- Advanced testing suite (beyond basic unit tests)
 
 ## 3. User Flow
 
-A new visitor lands on the welcome page and sees prompts to sign up or log in. They create an account with email and password (Better Auth handles verification). Upon successful login, they are redirected to a protected dashboard where a left sidebar offers links to “Dashboard,” “Chat,” and “Profile.” The main area displays today’s events on a calendar, a list of pending tasks, and a summary of recent expenses.
+When a new user arrives, they land on a public sign-up/sign-in page. After entering their email and password, the user is securely authenticated and redirected to their private dashboard. On the dashboard, they see a high-level summary: total portfolio value, profit/loss for the day, and a table listing each asset with quantity and average cost. A theme toggle in the top bar lets them switch between light and dark modes.
 
-To interact with the AI, the user clicks “Chat.” This opens a conversation panel with a message list and input box at the bottom. The user types a command like “Add a $50 grocery expense for Friday.” The app sends it to `/api/chat`; after processing with GPT-4o, the backend returns structured JSON, automatically inserting a new expense into the database. When the user returns to the dashboard, the expense appears in the tracker and charts.
+To track assets, the user clicks an “Add Transaction” button, which opens a modal form. In this form they select an asset type (e.g., gold, stock, crypto), fill in quantity, price per unit, date, and whether it’s a buy or sell. Upon submission, the data is saved to the PostgreSQL database. The dashboard automatically updates to include the new transaction in both the summary cards and the data table. If the user clicks on an asset row, they navigate to an asset-detail page that lists every lot or transaction for deeper analysis.
 
 ## 4. Core Features
 
-- **Authentication & Authorization**: Sign-up, sign-in, session management, protected routes.
-- **Dashboard**: Calendar view (events), to-do list, expense summary with interactive charts.
-- **AI Chat Interface**: Conversational UI for natural language commands.
-- **Chat API Endpoint**: `/api/chat` that validates sessions, calls GPT-4o, parses structured output, and triggers database operations.
-- **Database Models**: `users`, `calendarEvents`, `tasks`, `expenses` via PostgreSQL and Drizzle ORM.
-- **UI Components**: Shadcn/ui building blocks (Buttons, Inputs, Cards, Tables, Charts).
-- **Docker Setup**: One-command local environment with Next.js server and PostgreSQL.
-- **Error Handling**: Graceful UI feedback for API or network failures.
+- **Authentication Module**: Sign-up, sign-in, and session management via Better Auth.
+- **Dashboard**: Protected page showing aggregated portfolio metrics and a data table of assets.
+- **Database Schema**: Drizzle ORM models for Users, Assets, Transactions (fields: assetType, quantity, pricePerUnit, date, buy/sell).
+- **Transaction CRUD**: Modal or page for adding, editing, and deleting manual transactions.
+- **UI Component Library**: Cards, tables, forms, buttons from shadcn/ui; styled with Tailwind CSS.
+- **Theme Switcher**: Dark/light mode toggle stored in user preference.
+- **API Routes Skeleton**: Next.js server routes under `app/api/` to handle external data calls.
+- **Docker Configuration**: Dockerfile and docker-compose for reproducible local and production environments.
 
 ## 5. Tech Stack & Tools
 
-- **Frontend**: Next.js 15 (App Router), React + TypeScript
-- **Styling**: Tailwind CSS v4, shadcn/ui component library
-- **Authentication**: Better Auth (NextAuth-like flow)
-- **Backend**: Next.js API Routes, Node.js 18+
-- **Database**: PostgreSQL, Drizzle ORM for type-safe schema and queries
-- **AI Integration**: OpenAI GPT-4o (function-calling for structured JSON)
-- **Containerization**: Docker (Next.js + PostgreSQL services)
-- **Development Tools**: VS Code with ESLint, Prettier
-- **State Management**: React hooks (useState, useEffect) or optional Zustand for chat history
+- **Frontend**: Next.js (App Router), React, TypeScript
+- **Authentication**: Better Auth
+- **Database & ORM**: PostgreSQL, Drizzle ORM
+- **UI Library**: shadcn/ui
+- **Styling**: Tailwind CSS v4
+- **State Management**: React hooks (with optional React Query later)
+- **API Layer**: Next.js API routes in `app/api/`
+- **Containerization**: Docker, docker-compose
+- **Charting (future)**: Recharts or Chart.js
+- **Testing (future)**: Jest or Playwright/Cypress
 
 ## 6. Non-Functional Requirements
 
-- **Performance**: Page loads under 500ms; AI chat response under 2 seconds (network permitting).
-- **Scalability**: Modular API routes and database schemas allow horizontal scaling.
-- **Security**: All API routes require authenticated sessions; use HTTPS in production; store secrets in environment variables; follow OWASP Top 10 best practices.
-- **Reliability**: Automatic retries for transient DB or AI API errors, with user-friendly error messages.
-- **Usability**: Accessible UI components (ARIA labels, keyboard navigation), consistent styling.
-- **Maintainability**: Clean folder structure, TypeScript types for data contracts, documented code and prompts.
+- **Performance**: Initial page load under 2 seconds on broadband; subsequent navigations under 1 second via client-side routing.
+- **Security**: HTTPS enforcement; secure cookies; server-side input validation; OWASP Top 10 considerations.
+- **Scalability**: Well-normalized database schema; stateless API routes; Dockerized services for horizontal scaling.
+- **Usability**: Accessible (WCAG 2.1 AA) components; responsive layout on mobile/tablet; dark/light modes.
+- **Reliability**: Graceful error handling in UI when API calls fail; retry logic for transient errors.
 
 ## 7. Constraints & Assumptions
 
-- **OpenAI Availability**: Assumes GPT-4o API key is provisioned and rate limits are respected.
-- **Environment**: Node 18+ runtime, Docker installed locally, modern browser support (ES6+).
-- **Data Volume**: Initial user base expected to be small to medium; no sharding needed in V1.
-- **Prompt Engineering**: Relies on well-crafted prompts and function schemas to ensure consistent AI output.
-- **Network**: Users have stable internet for chat interactions.
+- The project will run on Node.js 18+ and a managed PostgreSQL instance.
+- Better Auth and Drizzle must be available and compatible with Next.js App Router.
+- Manual price entry is acceptable in V1; external API keys (TEFAS, crypto, commodities) aren’t required yet.
+- Users have modern browsers that support ES6 modules and CSS variables for theming.
+- Development and production environments use Docker to minimize “works on my machine” issues.
 
 ## 8. Known Issues & Potential Pitfalls
 
-- **Unpredictable AI Responses**: GPT may return unexpected JSON shapes. Mitigation: validate and sanitize AI output, provide fallback UI flows for manual input.
-- **API Rate Limits**: Exceeding OpenAI limits can block chat. Mitigation: implement exponential backoff and inform user of delays.
-- **Database Migrations**: Schema updates can break existing data. Mitigation: use migration tools, keep dev/prod schemas in sync.
-- **Docker Performance**: On some systems, Docker-mounted volumes can be slow. Mitigation: document volume caching or local Postgres installation as alternative.
-- **Error Handling Gaps**: Unhandled exceptions in `/api/chat` could crash the route. Mitigation: wrap calls in try/catch and return structured error messages.
+- **API Rate Limits**: Future integration with external price feeds may hit rate limits—plan caching and back-off strategies.
+- **Data Consistency**: Manual transaction entry can lead to user errors—implement client-side and server-side validations.
+- **Database Migrations**: Evolving schemas (e.g., adding subscription fields) require careful migration planning with Drizzle’s migration tool.
+- **Theming Edge Cases**: Some third-party components might not honor Tailwind’s dark mode—test and apply overrides as needed.
+- **Deployment Environment Variables**: Ensure secrets (DB URL, auth keys) are injected securely in CI/CD pipelines.
+- **Performance Bottlenecks**: Large portfolios could slow down the dashboard table—introduce pagination or virtualization if needed.
 
 ---
 
-This PRD provides a clear, unambiguous blueprint for the AI Planner Assistant. It outlines what to build, how users will interact with it, and the technical foundation required—enabling the AI or your development team to generate detailed technical specifications, UI wireframes, and implementation plans without missing any critical information.
+This PRD provides a clear, unambiguous reference for the AI or development team to generate subsequent technical documentation—Frontend Guidelines, Backend Structure, App Flow, File Structure, and IDE Rules—without any guesswork.
 
 ---
 **Document Details**
-- **Project ID**: 2518caaa-9e53-4baf-9eb4-78aa128bc12b
-- **Document ID**: aff0554d-89b0-4997-ba98-6ae68e3a1752
+- **Project ID**: 9996f6d0-22b9-4cb2-a2e4-6f42e720cff0
+- **Document ID**: 468c43dc-3d65-41ec-8513-84abf138efa4
 - **Type**: custom
 - **Custom Type**: project_requirements_document
 - **Status**: completed
-- **Generated On**: 2025-10-11T09:51:43.437Z
+- **Generated On**: 2025-10-12T15:22:09.320Z
 - **Last Updated**: N/A

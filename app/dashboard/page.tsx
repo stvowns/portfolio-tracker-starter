@@ -1,9 +1,8 @@
-import { ExpenseChart } from "@/components/custom/expense-chart"
-import { DashboardWidgets } from "@/components/custom/dashboard-widgets"
-import { SectionCards } from "@/components/section-cards"
-import { Button } from "@/components/ui/button"
-import { Bot, MessageSquare } from "lucide-react"
-import Link from "next/link"
+import { Button } from "@/components/ui/button";
+import { Bot, MessageSquare } from "lucide-react";
+import Link from "next/link";
+import { AddTransactionDialog } from "@/components/portfolio/add-transaction-dialog";
+import { PortfolioDashboard } from "./portfolio-dashboard";
 
 export default function Page() {
   return (
@@ -11,26 +10,24 @@ export default function Page() {
       <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
         <div className="flex items-center justify-between px-4 lg:px-6">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Portföy Dashboard</h1>
             <p className="text-muted-foreground">
-              Manage your calendar, tasks, and expenses with AI assistance
+              Yatırım portföyünüzü takip edin ve analiz edin
             </p>
           </div>
-          <Link href="/chat">
-            <Button size="lg" className="gap-2">
-              <Bot className="h-5 w-5" />
-              <MessageSquare className="h-5 w-5" />
-              AI Assistant
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <AddTransactionDialog />
+            <Link href="/chat">
+              <Button variant="outline" size="lg" className="gap-2">
+                <Bot className="h-5 w-5" />
+                <MessageSquare className="h-5 w-5" />
+                AI Assistant
+              </Button>
+            </Link>
+          </div>
         </div>
-        <SectionCards />
-        <div className="px-4 lg:px-6">
-          <DashboardWidgets />
-        </div>
-        <div className="px-4 lg:px-6">
-          <ExpenseChart />
-        </div>
+        
+        <PortfolioDashboard />
       </div>
     </div>
   )

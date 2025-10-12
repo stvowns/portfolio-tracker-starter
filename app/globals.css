@@ -121,3 +121,26 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* DarkReader hydration sorunu için düzeltme */
+@layer utilities {
+  /* DarkReader'ın SVG'lerde yaptığı değişiklikleri sınırla */
+  svg {
+    color: inherit !important;
+  }
+  
+  /* SVG stroke özelliklerini koruma */
+  svg[stroke="currentColor"] {
+    stroke: currentColor !important;
+  }
+  
+  svg[fill="currentColor"] {
+    fill: currentColor !important;
+  }
+  
+  /* DarkReader tarafından eklenen inline stilleri geçersiz kıl */
+  svg[style*="--darkreader"] {
+    color: inherit !important;
+    stroke: currentColor !important;
+  }
+}

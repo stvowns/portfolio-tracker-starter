@@ -1,133 +1,171 @@
 # Tech Stack Document
 
-# Tech Stack Document for ai-planner-assistant
+# Tech Stack Document
 
-This document explains, in everyday language, the technology choices behind the **ai-planner-assistant** starter template. It shows how each piece fits together to build an AI-powered schedule, task, and expense manager with a chat interface.
+This document explains, in simple terms, the technology choices for the multi-asset portfolio tracker starter. It breaks down each piece of the stack and shows how they fit together to deliver a fast, secure, and user-friendly application.
 
 ## 1. Frontend Technologies
 
-These are the tools that run in your user’s web browser, shaping the look and feel of the app and handling interactions.
+Our frontend (what the user sees and interacts with) is built with the following key technologies:
 
-- **Next.js 15 with the App Router**
-  - A React-based framework that makes it easy to split pages into Server Components (for fast initial loads) and Client Components (for interactive parts like the chat).  
-- **TypeScript**
-  - Adds clear, predictable typing to JavaScript. This helps developers catch mistakes early and defines the shape of your data (events, tasks, expenses) from end to end.  
-- **Tailwind CSS v4**
-  - A utility-first styling tool that speeds up design with small, composable CSS classes (e.g., `p-4`, `text-gray-700`).  
-- **shadcn/ui**
-  - A library of ready-to-use UI components (buttons, cards, input fields) built on Tailwind, so you can assemble a polished interface quickly without writing custom CSS.  
-- **Optional UI libraries**
-  - **react-big-calendar**: A popular calendar component you can plug in for a rich date-grid view in your dashboard.  
-  - **chart-area-interactive** or **react-chartjs-2**: For building interactive expense charts and data visualizations.  
-- **Client-side State Management**
-  - **React `useState` / `useReducer`** for simple state needs.  
-  - **Zustand** (optional) if your chat and dashboard grow complex and need a lightweight global store.
+- **Next.js (App Router)**
+  • Provides a solid foundation for server-rendered and client-rendered pages.  
+  • Lets us set up API routes alongside our pages, keeping frontend and backend code in one project.
 
-**How it enhances UX:**
-- Fast, SEO-friendly page loads with Server Components.
-- A consistent, attractive design built from well-tested UI blocks.
-- Strong type checks that prevent runtime errors and keep interfaces in sync with the data model.
+- **React & TypeScript**
+  • React offers reusable UI building blocks (components).  
+  • TypeScript adds type checking, catching errors early and making code easier to maintain.
+
+- **Tailwind CSS (v4)**
+  • A utility-first CSS framework that speeds up styling with pre-built classes.  
+  • Enables quick theming (light/dark mode) and consistent, responsive layouts.
+
+- **shadcn/ui Component Library**
+  • A collection of ready-made UI elements (cards, data tables, buttons, inputs).  
+  • Fully customizable so the look and feel stays consistent with your brand.
+
+- **React State & Data Fetching**
+  • Basic React hooks (`useState`, `useEffect`) handle local component state.  
+  • As the app grows, we can add a library like React Query or SWR for caching and synchronizing server data (e.g., live price updates).
+
+- **Charting Library (e.g., Chart.js or Recharts)**
+  • Powers interactive graphs—daily/weekly bar charts, portfolio trends.  
+  • Helps users visualize performance at a glance.
+
+**How this enhances user experience**
+- Fast initial page loads via server rendering.  
+- Smooth, interactive interfaces with pre-built components.  
+- Consistent styling and easy theming for light/dark modes.  
+- Clear data visualizations to help users understand their portfolio at a glance.
 
 ## 2. Backend Technologies
 
-These power the server side of the app, handle data storage, user sessions, and the AI chat logic.
+Behind the scenes, these technologies handle data storage, user accounts, and business logic:
 
-- **Next.js API Routes / Server Actions**
-  - Lets you write backend code (e.g., `/api/chat/route.ts`) alongside your frontend, so deployment and routing stay unified.  
-- **Better Auth**
-  - Manages sign-up, sign-in, session cookies, and protects routes (e.g., dashboard and chat API) so each user only sees their own data.  
+- **Next.js API Routes**
+  • Serverless functions within the Next.js app.  
+  • Host endpoints for portfolio CRUD operations and external data fetching.
+
+- **Node.js & TypeScript**
+  • Runs the API routes and connection logic.  
+  • TypeScript ensures the backend code is as type-safe as the frontend.
+
 - **Drizzle ORM**
-  - A type-safe library for defining and querying a PostgreSQL database schema. It ensures your code, data structures, and database tables always match.  
-- **PostgreSQL**
-  - A reliable, production-grade database for storing users, calendar events, tasks, and expenses.  
-- **lib/openai.ts** (custom utility)
-  - Encapsulates all calls to the OpenAI GPT-4o API, from building prompts to parsing responses into structured JSON.  
+  • A lightweight, type-safe way to define and run SQL queries.  
+  • Perfect for complex financial queries (average cost, FIFO logic for fund sales).
 
-**How it supports functionality:**
-1. Users log in via Better Auth and get a session cookie.  
-2. Chat messages are sent from the frontend to `/api/chat/route.ts`.  
-3. The route checks the session, passes the message to GPT-4o, receives structured instructions (e.g., “createEvent”), and uses Drizzle to update PostgreSQL.  
-4. Dashboard pages fetch data (events, tasks, expenses) from the database and render it.
+- **PostgreSQL**
+  • A powerful, open-source relational database.  
+  • Stores users, assets, transactions, and handles queries that power the dashboard.
+
+- **better-auth**
+  • Simplifies user authentication (sign-up, sign-in, session management).  
+  • Supports secure, personalized portfolios tied to each user account.
+
+**How these components work together**
+1. A user logs in via **better-auth**.
+2. Frontend calls Next.js API routes to read/write data.  
+3. **Drizzle ORM** sends type-safe SQL queries to **PostgreSQL**.  
+4. The server responds, and the UI updates to show the latest portfolio data.
 
 ## 3. Infrastructure and Deployment
 
-This covers how the app is hosted, how code changes flow into production, and how the environment is managed.
+To keep the project reliable, scalable, and easy to maintain, we’ve chosen:
 
-- **Docker & Docker Compose (local development)**
-  - Spins up the app and a PostgreSQL database with one command, ensuring everyone on your team works in the same environment.  
-- **Version Control: Git + GitHub**
-  - Tracks code changes, enables pull requests, and stores your repository safely in the cloud.  
-- **CI/CD: GitHub Actions**
-  - Runs automated checks (linting, tests) on every commit and deploys to your hosting provider upon merge.  
-- **Hosting Platform: Vercel (recommended)**
-  - Optimized for Next.js apps: automatic SSL, global CDN, Serverless Functions for API routes, and easy environment variable management.  
-- **Environment Variables**
-  - Sensitive keys (e.g., `OPENAI_API_KEY`) are stored securely in your CI/CD and hosting platform settings, not in your code.  
-- **Cron / Scheduled Jobs**
-  - **Vercel Cron Jobs** or a lightweight scheduler to send reminders or run background tasks (e.g., checking for upcoming events).
+- **Version Control: Git & GitHub**
+  • Tracks changes and enables team collaboration.  
+  • Pull requests and code reviews ensure quality before merging.
 
-**Benefits:**
-- Consistent local setup with Docker.  
-- Quick code reviews and automated testing with GitHub Actions.  
-- Scalable, low-maintenance production hosting on Vercel.  
-- Secure handling of secrets and scheduled background work.
+- **Hosting Platform: Vercel**
+  • Native support for Next.js, automatic builds and deployments on every push.  
+  • Global CDN ensures fast page loads for users worldwide.
+
+- **Containerization: Docker & Docker Compose**
+  • Defines a consistent environment for local development and production.  
+  • Simplifies setup of the database and app dependencies.
+
+- **CI/CD: GitHub Actions (optional)**
+  • Automates testing, builds, and deployments on code changes.  
+  • Ensures that only passing code reaches production.
+
+- **Environment Management**
+  • Environment variables (via Vercel or `.env` files) keep secrets like database URLs and API keys secure.
+
+- **Scheduled Tasks: Vercel Cron Jobs (optional)**
+  • Can run daily portfolio summary calculations and send notifications to users.
+
+**Benefits**
+- Zero-downtime deployments and quick rollbacks.  
+- Consistent environments across developer machines and production.  
+- Automated testing and deployment pipelines for faster releases.
 
 ## 4. Third-Party Integrations
 
-These external services add powerful features without building them from scratch.
+We connect to outside services to enrich the user experience:
 
-- **OpenAI GPT-4o API**
-  - Powers the natural language chat interface, turning your users’ text commands into structured actions (create tasks, schedule events, log expenses).  
-- **Better Auth**
-  - Offloads the complex work of secure user authentication, social logins (if enabled), and session management.  
-- **Vercel Cron Jobs**
-  - Runs scheduled checks for reminders and notifications.  
-- **(Optional) Email / Notification Service**
-  - e.g., SendGrid, Postmark, or Nodemailer for sending reminder emails or push notifications when events approach.  
-- **Analytics**
-  - e.g., Google Analytics or Plausible to track user engagement, feature usage, and chat activity.
+- **Real-Time Market Data APIs**
+  • TEFAS for fund prices, commodity APIs for gold/silver rates, stock exchange feeds.  
+  • Integrated via Next.js API routes to fetch and cache prices server-side.
 
-**How they enhance functionality:**
-- AI understanding and language processing without maintaining your own ML models.  
-- Secure, battle-tested authentication.  
-- Automated reminders and real-time insights into how people use your assistant.
+- **Currency Exchange Rates**
+  • Optional service to convert portfolio values between currencies (e.g., USD/TRY).
+
+- **Push Notifications** (future)
+  • Services like OneSignal or Firebase Cloud Messaging for daily portfolio updates.
+
+- **Analytics** (optional)
+  • Google Analytics or similar to track user engagement and help guide feature improvements.
+
+**Advantages**
+- Keeps portfolio values up-to-date without manual entry.  
+- Displays multi-currency totals for international users.  
+- Enables alerting users about significant portfolio changes.
 
 ## 5. Security and Performance Considerations
 
-Measures to keep user data safe and ensure the app runs smoothly.
+To protect user data and deliver a responsive experience, we’ve implemented:
 
-Security:
-- HTTPS everywhere (automatically provided by Vercel).  
-- Session-based auth with **Better Auth**, protecting routes and API endpoints.  
-- Role of **TypeScript** and ORM type checks to avoid injection attacks and data mismatches.  
-- Environment variables for all secrets (no hard-coded keys).  
-- Proper error handling in the chat API to avoid exposing internal details.
+- **Secure Authentication**
+  • Session tokens or JWTs managed by **better-auth**.  
+  • Password hashing and secure cookies over HTTPS.
 
-Performance:
-- **Server Components** for pre-rendering dashboard data, reducing client bundle size.  
-- **CDN caching** of static assets (CSS, JS, images) on Vercel.  
-- **Incremental loading** of chat history using paginated API calls.  
-- **Drizzle ORM optimizations**, such as selecting only needed columns and using indexed queries on `userId` fields.  
-- **Docker** ensures dependency consistency, eliminating “it works on my machine” slowdowns.
+- **Data Protection**
+  • Environment variables to store secrets and API keys.  
+  • Parameterized queries via Drizzle ORM to prevent SQL injection.
+
+- **Performance Optimizations**
+  • Server-side rendering (SSR) for critical pages to speed up initial load.  
+  • Code-splitting and lazy loading of non-essential components.  
+  • Caching of external API responses to reduce latency and API usage.
+
+- **Error Handling & Monitoring**
+  • Graceful error messages when external APIs fail.  
+  • Logging (e.g., Sentry) to catch and report runtime errors in production.
 
 ## 6. Conclusion and Overall Tech Stack Summary
 
-We’ve assembled a modern, type-safe, and scalable stack perfectly suited for building an AI-powered planning assistant:
+In summary, this stack was chosen to deliver a maintainable, scalable, and user-friendly portfolio tracker starter:
 
-- **Frontend:** Next.js 15, React, TypeScript, Tailwind CSS, shadcn/ui (plus optional React Calendar and Chart libraries)
-- **Backend:** Next.js API Routes, Better Auth, Drizzle ORM, PostgreSQL, and a custom OpenAI client in `lib/openai.ts`
-- **Infrastructure:** Docker, GitHub & GitHub Actions, Vercel hosting, environment variables management, and scheduled jobs
-- **Integrations:** OpenAI GPT-4o, third-party auth, email/notification services, analytics, and optional cron jobs
-- **Security & Performance:** HTTPS, session management, type safety, CDN, Server Components, and database indexing
+- Frontend: Next.js, React, TypeScript, Tailwind CSS, shadcn/ui
+- Backend: Next.js API routes, Node.js, TypeScript, Drizzle ORM, PostgreSQL, better-auth
+- Infrastructure: Git/GitHub, Vercel, Docker, Docker Compose, CI/CD pipelines
+- Third-Party Integrations: Market data APIs, currency converters, notifications, analytics
+- Security & Performance: Secure auth, SSR, caching, error monitoring
 
-This combination delivers a unified developer experience and a smooth end-user journey: secure login, natural language planning, and interactive dashboards—all running on a reliable, scalable platform. By using well-supported libraries and services, you can focus on refining your AI prompts, enhancing the chat UX, and expanding your data models, rather than wrestling with boilerplate configuration.
+This combination ensures:
+- **Rapid development** with reusable components and type safety
+- **High performance** through server rendering and optimized code delivery
+- **Robust security** with proven authentication methods and safe database queries
+- **Flexibility** to add new features—charts, mobile support, premium plans—without changing the core architecture
+
+By choosing these technologies, we lay a solid foundation that meets today’s needs and scales easily for tomorrow’s innovations.
 
 ---
 **Document Details**
-- **Project ID**: 2518caaa-9e53-4baf-9eb4-78aa128bc12b
-- **Document ID**: 9153f381-ba34-408b-8ff9-ec9b4cbd1951
+- **Project ID**: 9996f6d0-22b9-4cb2-a2e4-6f42e720cff0
+- **Document ID**: 5016ebc9-e986-4465-9550-651067d434d9
 - **Type**: custom
 - **Custom Type**: tech_stack_document
 - **Status**: completed
-- **Generated On**: 2025-10-11T09:53:23.476Z
+- **Generated On**: 2025-10-12T15:24:43.713Z
 - **Last Updated**: N/A

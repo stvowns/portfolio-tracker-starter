@@ -1,13 +1,29 @@
 # App Flowchart
 
-flowchart TD\n    Start[Start]\n    Start --> Auth[User Authentication]\n    Auth --> Dashboard[Protected Dashboard]\n    Dashboard -->|View Data| Calendar[Calendar View]\n    Dashboard -->|View Data| Tasks[To do List]\n    Dashboard -->|View Data| Expenses[Expense Tracker]\n    Dashboard -->|Interact| ChatUI[AI Chat Interface]\n    ChatUI -->|Send Message| ChatAPI[API Chat Route]\n    ChatAPI -->|Verify User Session| AuthCheck[Session Verification]\n    AuthCheck -->|Call API| OpenAI[OpenAI GPT4o API]\n    OpenAI -->|Receive Structured Data| Response[Structured JSON Response]\n    Response -->|Parse and Route| DBOps[Database Operations]\n    DBOps -->|Read and Write| Dashboard
+flowchart TD
+    AppStart[Open App]
+    AppStart --> AuthCheck{User Authenticated?}
+    AuthCheck -->|No| AuthPage[Login Signup Page]
+    AuthPage -->|Submit| AuthCheck
+    AuthCheck -->|Yes| Dashboard[Dashboard Page]
+    Dashboard --> Portfolio[View Portfolio]
+    Dashboard --> NewTxn[Add New Transaction]
+    Dashboard --> PriceFetch[Fetch Live Prices]
+    Portfolio --> AssetList[Asset List]
+    AssetList --> AssetDetail[Asset Detail]
+    AssetDetail --> Portfolio
+    NewTxn --> TxnForm[Transaction Form]
+    TxnForm -->|Save| SaveTxn[Save Transaction]
+    SaveTxn --> Dashboard
+    PriceFetch --> PriceAPI[External Price API]
+    PriceAPI --> Dashboard
 
 ---
 **Document Details**
-- **Project ID**: 2518caaa-9e53-4baf-9eb4-78aa128bc12b
-- **Document ID**: 2a20d3dc-09ee-4f0e-b23e-afe439bc7351
+- **Project ID**: 9996f6d0-22b9-4cb2-a2e4-6f42e720cff0
+- **Document ID**: d29706b8-7bfd-4a0a-9bd6-f898e131c4fc
 - **Type**: custom
 - **Custom Type**: app_flowchart
 - **Status**: completed
-- **Generated On**: 2025-10-11T09:53:03.030Z
+- **Generated On**: 2025-10-12T15:23:54.728Z
 - **Last Updated**: N/A

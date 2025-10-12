@@ -1,0 +1,234 @@
+import { NextRequest } from "next/server";
+import { db, assets, transactions, portfolios } from "@/db";
+import { requireAuth } from "@/lib/auth-utils";
+import { 
+    CreateAssetSchema, 
+    AssetListQuerySchema,
+    AssetListQuery 
+} from "@/lib/validations/portfolio";
+import { eq, and, sum, count } from "drizzle-orm";
+
+/**
+ * GET /api/portfolio/assets
+ * Kullanıcının varlıklarını mevcut holdingleri ile birlikte listeler
+ */
+export async function GET(request: NextRequest) {
+    const session = await requireAuth(request);
+    if (session instanceof Response) return session;
+    
+    try {
+        const { searchParams } = new URL(request.url);
+        
+        // Query parametrelerini parse et
+        const queryParams: Partial<AssetListQuery> = {
+            assetType: (searchParams.get("assetType") as "GOLD" | "SILVER" | "STOCK" | "FUND" | "CRYPTO" | "EUROBOND") || undefined,
+            portfolioId: searchParams.get("portfolioId") || undefined,
+            page: Number(searchParams.get("page")) || 1,
+            limit: Number(searchParams.get("limit")) || 20,
+        };
+
+        // Validation
+        const validatedQuery = AssetListQuerySchema.parse(queryParams);
+        
+        // Query conditions oluştur
+        const whereConditions = [eq(assets.userId, session.user.id)];
+        
+        if (validatedQuery.assetType) {
+            whereConditions.push(eq(assets.assetType, validatedQuery.assetType));
+        }
+        
+        if (validatedQuery.portfolioId) {
+            whereConditions.push(eq(assets.portfolioId, validatedQuery.portfolioId));
+        }
+
+        // Sayfalama için offset hesapla
+        const offset = (validatedQuery.page - 1) * validatedQuery.limit;
+        
+        // Assets'ları transaction summaries ile birlikte getir
+        const userAssets = await db
+            .select({
+                id: assets.id,
+                name: assets.name,
+                symbol: assets.symbol,
+                assetType: assets.assetType,
+                category: assets.category,
+                currentPrice: assets.currentPrice,
+                lastUpdated: assets.lastUpdated,
+                createdAt: assets.createdAt,
+                // Transaction summaries
+                totalBuyQuantity: sum(transactions.quantity).mapWith(Number),
+                totalBuyAmount: sum(transactions.totalAmount).mapWith(Number),
+                transactionCount: count(transactions.id).mapWith(Number)
+            })
+            .from(assets)
+            .leftJoin(transactions, and(
+                eq(transactions.assetId, assets.id),
+                eq(transactions.transactionType, "BUY")
+            ))
+            .where(and(...whereConditions))
+            .groupBy(assets.id)
+            .orderBy(assets.createdAt)
+            .limit(validatedQuery.limit)
+            .offset(offset);
+
+        // Her asset için net holding miktarını hesapla (Buy - Sell)
+        const enrichedAssets = await Promise.all(
+            userAssets.map(async (asset) => {
+                // Buy ve Sell toplamlarını ayrı ayrı hesapla
+                const buyTotal = await db
+                    .select({
+                        totalQuantity: sum(transactions.quantity).mapWith(Number),
+                        totalAmount: sum(transactions.totalAmount).mapWith(Number)
+                    })
+                    .from(transactions)
+                    .where(and(
+                        eq(transactions.assetId, asset.id),
+                        eq(transactions.transactionType, "BUY")
+                    ));
+
+                const sellTotal = await db
+                    .select({
+                        totalQuantity: sum(transactions.quantity).mapWith(Number),
+                        totalAmount: sum(transactions.totalAmount).mapWith(Number)
+                    })
+                    .from(transactions)
+                    .where(and(
+                        eq(transactions.assetId, asset.id),
+                        eq(transactions.transactionType, "SELL")
+                    ));
+
+                const buyQuantity = buyTotal[0]?.totalQuantity || 0;
+                const sellQuantity = sellTotal[0]?.totalQuantity || 0;
+                const buyAmount = buyTotal[0]?.totalAmount || 0;
+                const sellAmount = sellTotal[0]?.totalAmount || 0;
+
+                const netQuantity = buyQuantity - sellQuantity;
+                const netAmount = buyAmount - sellAmount;
+                const averagePrice = netQuantity > 0 ? netAmount / netQuantity : 0;
+
+                // Mevcut değer hesapla (eğer current price varsa)
+                const currentValue = asset.currentPrice && netQuantity > 0 
+                    ? parseFloat(asset.currentPrice) * netQuantity 
+                    : null;
+
+                const profitLoss = currentValue && netAmount > 0 
+                    ? currentValue - netAmount 
+                    : null;
+
+                const profitLossPercent = profitLoss && netAmount > 0 
+                    ? (profitLoss / netAmount) * 100 
+                    : null;
+
+                return {
+                    ...asset,
+                    holdings: {
+                        netQuantity,
+                        netAmount,
+                        averagePrice,
+                        currentValue,
+                        profitLoss,
+                        profitLossPercent,
+                        totalTransactions: asset.transactionCount
+                    }
+                };
+            })
+        );
+
+        // Toplam asset sayısı
+        const totalAssets = await db
+            .select({ count: assets.id })
+            .from(assets)
+            .where(and(...whereConditions));
+
+        const totalPages = Math.ceil(totalAssets.length / validatedQuery.limit);
+
+        return Response.json({
+            success: true,
+            data: {
+                assets: enrichedAssets.filter(asset => asset.holdings.netQuantity > 0), // Sadece holding'i olan assets
+                pagination: {
+                    currentPage: validatedQuery.page,
+                    totalPages,
+                    totalCount: totalAssets.length,
+                    hasMore: validatedQuery.page < totalPages
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error("Assets listesi alma hatası:", error);
+        return Response.json(
+            { success: false, error: "Varlıklar alınırken hata oluştu" },
+            { status: 500 }
+        );
+    }
+}
+
+/**
+ * POST /api/portfolio/assets
+ * Yeni varlık oluşturur
+ */
+export async function POST(request: NextRequest) {
+    const session = await requireAuth(request);
+    if (session instanceof Response) return session;
+    
+    try {
+        const body = await request.json();
+        
+        // Validation
+        const validatedData = CreateAssetSchema.parse(body);
+        
+        // Eğer portfolioId belirtilmişse, portfolio'nun kullanıcıya ait olduğunu kontrol et
+        if (validatedData.portfolioId) {
+            const portfolio = await db
+                .select()
+                .from(portfolios)
+                .where(and(
+                    eq(portfolios.id, validatedData.portfolioId),
+                    eq(portfolios.userId, session.user.id)
+                ))
+                .limit(1);
+
+            if (portfolio.length === 0) {
+                return Response.json(
+                    { success: false, error: "Belirtilen portföy bulunamadı veya size ait değil" },
+                    { status: 404 }
+                );
+            }
+        }
+        
+        // Asset'ı veritabanına ekle
+        const newAsset = await db
+            .insert(assets)
+            .values({
+                userId: session.user.id,
+                portfolioId: validatedData.portfolioId,
+                name: validatedData.name,
+                assetType: validatedData.assetType,
+                symbol: validatedData.symbol,
+                category: validatedData.category,
+            })
+            .returning();
+
+        return Response.json({
+            success: true,
+            message: "Varlık başarıyla eklendi",
+            data: newAsset[0]
+        }, { status: 201 });
+
+    } catch (error) {
+        console.error("Asset ekleme hatası:", error);
+        
+        if (error instanceof Error && error.name === "ZodError") {
+            return Response.json(
+                { success: false, error: "Geçersiz veri formatı", details: error.message },
+                { status: 400 }
+            );
+        }
+        
+        return Response.json(
+            { success: false, error: "Varlık eklenirken hata oluştu" },
+            { status: 500 }
+        );
+    }
+}

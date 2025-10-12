@@ -155,7 +155,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
               <Link href="/">
-                <Image src="/codeguide-logo.png" alt="CodeGuide" width={32} height={32} className="rounded-lg" />
+                <Image 
+                  src="/codeguide-logo.png" 
+                  alt="CodeGuide" 
+                  width={32} 
+                  height={32} 
+                  className="rounded-lg"
+                  suppressHydrationWarning 
+                />
                 <span className="text-base font-semibold font-parkinsans">CodeGuide</span>
               </Link>
             </SidebarMenuButton>

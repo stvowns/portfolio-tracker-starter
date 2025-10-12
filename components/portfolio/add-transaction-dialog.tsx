@@ -1,0 +1,288 @@
+"use client";
+
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Loader2 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
+// Form schema
+const transactionSchema = z.object({
+    assetName: z.string().min(1, "Varlık adı gereklidir"),
+    assetType: z.enum(["GOLD", "SILVER", "STOCK", "FUND", "CRYPTO", "EUROBOND"]),
+    transactionType: z.enum(["BUY", "SELL"]),
+    quantity: z.number().positive("Miktar pozitif olmalıdır"),
+    pricePerUnit: z.number().positive("Fiyat pozitif olmalıdır"),
+    transactionDate: z.string().min(1, "Tarih gereklidir"),
+    notes: z.string().optional(),
+});
+
+type TransactionFormData = z.infer<typeof transactionSchema>;
+
+interface AddTransactionDialogProps {
+    trigger?: React.ReactNode;
+    onSuccess?: () => void;
+}
+
+export function AddTransactionDialog({ trigger, onSuccess }: AddTransactionDialogProps) {
+    const [isOpen, setIsOpen] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const {
+        register,
+        handleSubmit,
+        setValue,
+        watch,
+        reset,
+        formState: { errors },
+    } = useForm<TransactionFormData>({
+        resolver: zodResolver(transactionSchema),
+        defaultValues: {
+            transactionType: "BUY",
+            transactionDate: new Date().toISOString().split("T")[0],
+        },
+    });
+
+    const assetType = watch("assetType");
+    const transactionType = watch("transactionType");
+
+    const getAssetTypeLabel = (type: string) => {
+        const labels: Record<string, string> = {
+            "GOLD": "Altın",
+            "SILVER": "Gümüş",
+            "STOCK": "Hisse Senedi",
+            "FUND": "Yatırım Fonu",
+            "CRYPTO": "Kripto Para",
+            "EUROBOND": "Eurobond"
+        };
+        return labels[type] || type;
+    };
+
+    const onSubmit = async (data: TransactionFormData) => {
+        setIsLoading(true);
+        try {
+            // İlk önce asset'i oluştur veya bul
+            const assetResponse = await fetch("/api/portfolio/assets", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    name: data.assetName,
+                    assetType: data.assetType,
+                }),
+            });
+
+            if (!assetResponse.ok) {
+                throw new Error("Asset oluşturulurken hata oluştu");
+            }
+
+            const assetData = await assetResponse.json();
+            const assetId = assetData.data.id;
+
+            // Şimdi transaction'ı oluştur
+            const transactionResponse = await fetch("/api/portfolio/transactions", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    assetId,
+                    transactionType: data.transactionType,
+                    quantity: data.quantity,
+                    pricePerUnit: data.pricePerUnit,
+                    transactionDate: data.transactionDate,
+                    notes: data.notes,
+                }),
+            });
+
+            if (!transactionResponse.ok) {
+                throw new Error("Transaction oluşturulurken hata oluştu");
+            }
+
+            // Başarılı
+            reset();
+            setIsOpen(false);
+            if (onSuccess) {
+                onSuccess();
+            }
+        } catch (error) {
+            console.error("Transaction ekleme hatası:", error);
+            alert("İşlem eklenirken hata oluştu");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const defaultTrigger = (
+        <Button className="gap-2">
+            <Plus className="h-4 w-4" />
+            Yeni İşlem
+        </Button>
+    );
+
+    return (
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <DialogTrigger asChild>
+                {trigger || defaultTrigger}
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                    <DialogTitle>Yeni İşlem Ekle</DialogTitle>
+                    <DialogDescription>
+                        Portföyünüze yeni bir alım veya satım işlemi ekleyin.
+                    </DialogDescription>
+                </DialogHeader>
+                
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                    {/* Asset Type Selection */}
+                    <div className="space-y-2">
+                        <Label htmlFor="assetType">Varlık Türü</Label>
+                        <Select onValueChange={(value) => setValue("assetType", value as any)}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Varlık türünü seçin" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="GOLD">Altın</SelectItem>
+                                <SelectItem value="SILVER">Gümüş</SelectItem>
+                                <SelectItem value="STOCK">Hisse Senedi</SelectItem>
+                                <SelectItem value="FUND">Yatırım Fonu</SelectItem>
+                                <SelectItem value="CRYPTO">Kripto Para</SelectItem>
+                                <SelectItem value="EUROBOND">Eurobond</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        {errors.assetType && (
+                            <p className="text-sm text-red-500">{errors.assetType.message}</p>
+                        )}
+                    </div>
+
+                    {/* Asset Name */}
+                    <div className="space-y-2">
+                        <Label htmlFor="assetName">Varlık Adı</Label>
+                        <Input
+                            {...register("assetName")}
+                            placeholder="ör: Çeyrek Altın, AAPL, Bitcoin"
+                        />
+                        {errors.assetName && (
+                            <p className="text-sm text-red-500">{errors.assetName.message}</p>
+                        )}
+                    </div>
+
+                    {/* Transaction Type */}
+                    <div className="space-y-2">
+                        <Label>İşlem Türü</Label>
+                        <div className="flex gap-2">
+                            <Button
+                                type="button"
+                                variant={transactionType === "BUY" ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setValue("transactionType", "BUY")}
+                            >
+                                <Badge variant="secondary" className="mr-2">
+                                    ALIŞ
+                                </Badge>
+                            </Button>
+                            <Button
+                                type="button"
+                                variant={transactionType === "SELL" ? "destructive" : "outline"}
+                                size="sm"
+                                onClick={() => setValue("transactionType", "SELL")}
+                            >
+                                <Badge variant="secondary" className="mr-2">
+                                    SATIŞ
+                                </Badge>
+                            </Button>
+                        </div>
+                        {errors.transactionType && (
+                            <p className="text-sm text-red-500">{errors.transactionType.message}</p>
+                        )}
+                    </div>
+
+                    {/* Quantity and Price */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="quantity">Miktar</Label>
+                            <Input
+                                type="number"
+                                step="any"
+                                {...register("quantity", { valueAsNumber: true })}
+                                placeholder="0"
+                            />
+                            {errors.quantity && (
+                                <p className="text-sm text-red-500">{errors.quantity.message}</p>
+                            )}
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="pricePerUnit">Birim Fiyat (₺)</Label>
+                            <Input
+                                type="number"
+                                step="any"
+                                {...register("pricePerUnit", { valueAsNumber: true })}
+                                placeholder="0.00"
+                            />
+                            {errors.pricePerUnit && (
+                                <p className="text-sm text-red-500">{errors.pricePerUnit.message}</p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Transaction Date */}
+                    <div className="space-y-2">
+                        <Label htmlFor="transactionDate">İşlem Tarihi</Label>
+                        <Input
+                            type="date"
+                            {...register("transactionDate")}
+                        />
+                        {errors.transactionDate && (
+                            <p className="text-sm text-red-500">{errors.transactionDate.message}</p>
+                        )}
+                    </div>
+
+                    {/* Notes */}
+                    <div className="space-y-2">
+                        <Label htmlFor="notes">Notlar (Opsiyonel)</Label>
+                        <Textarea
+                            {...register("notes")}
+                            placeholder="İşlem hakkında notlarınız..."
+                            rows={3}
+                        />
+                        {errors.notes && (
+                            <p className="text-sm text-red-500">{errors.notes.message}</p>
+                        )}
+                    </div>
+
+                    <DialogFooter>
+                        <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
+                            İptal
+                        </Button>
+                        <Button type="submit" disabled={isLoading}>
+                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            İşlemi Ekle
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+    );
+}

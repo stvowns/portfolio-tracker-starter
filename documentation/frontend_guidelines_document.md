@@ -1,174 +1,147 @@
 # Frontend Guidelines Document
 
-# Frontend Guideline Document
+# Frontend Guideline Document for Portfolio Tracker Starter
 
-This document outlines the architecture, design principles, and technologies behind the `ai-planner-assistant` frontend. It is written in clear, everyday language so that anyone—regardless of technical background—can understand how the frontend is set up and why each choice was made.
-
----
+This document outlines the frontend architecture, design principles, and technologies used in the Portfolio Tracker Starter. It’s written in plain language so anyone can understand how the frontend is set up, why we made certain choices, and how to maintain and extend it.
 
 ## 1. Frontend Architecture
 
-**Frameworks and Libraries**
-- **Next.js 15** (App Router): Provides file-based routing and lets us split code between Server Components (fast initial loads) and Client Components (interactive features).
-- **TypeScript**: Adds strong typing to JavaScript, helping us catch errors early and document data structures like `Task`, `Event`, or `Expense`.
-- **Tailwind CSS v4** & **shadcn/ui**: A utility-first CSS framework plus a library of pre-built, accessible UI components (cards, buttons, input fields).
-- **Better Auth**: Manages user sign-up, sign-in, and session handling in a secure, out-of-the-box way.
-- **Drizzle ORM** with **PostgreSQL**: Defines database tables in TypeScript and gives us type-safe queries for user data, tasks, events, and expenses.
-- **Docker**: Simplifies local setup by running PostgreSQL and the app in containers with a single command.
+### Overview
+- **Framework:** Next.js (App Router) provides server-side rendering (SSR), static site generation (SSG), and API routes. This gives us fast page loads and built-in backend endpoints.
+- **Language:** TypeScript ensures type safety, catching errors early and making complex data structures (like financial transactions) reliable.
+- **UI Library:** `shadcn/ui` supplies pre-built components (Cards, Data Tables, Inputs, Buttons) styled in a modern “New York” aesthetic.
+- **Styling:** Tailwind CSS v4 offers utility-first, atomic classes for rapid, consistent styling.
+- **Authentication:** Better Auth handles sign-up, sign-in, and session management out of the box.
+- **Database & ORM:** Drizzle ORM with PostgreSQL delivers a type-safe, relational database layer for assets, portfolios, and transactions.
+- **Deployment:** Docker (with `Dockerfile` and `docker-compose.yml`) for consistent local and production environments.
 
-**Scalability, Maintainability, Performance**
-- **Scalability**: File-based routing and modular folder structure (`app/`, `components/`, `db/`, `lib/`) make it easy to add new pages, API routes, and components without confusion.
-- **Maintainability**: TypeScript types and Drizzle schemas ensure code and database stay in sync. Shared UI components keep styling consistent and reduce duplication.
-- **Performance**: Server Components render on the server for faster initial page loads, while dynamic imports and code-splitting only load heavy code (like chart libraries) when needed.
-
----
+### Scalability, Maintainability & Performance
+- **Scalability:** File-based routing and modular API routes allow easy addition of new pages and services (e.g., price-feed endpoints). Components and hooks are organized by feature.
+- **Maintainability:** TypeScript types and a component-driven structure keep code predictable and reusable. Business logic lives in `lib/`, UI in `components/`, and data schemas in `db/schema/`.
+- **Performance:** SSR/SSG and incremental static regeneration (ISR) speed up page loads. Tailwind’s JIT compiler strips unused CSS. Built-in Next.js image and asset optimizations reduce bundle size.
 
 ## 2. Design Principles
 
-**Usability**
-- Clear, consistent layouts and navigation.
-- Familiar UI patterns (buttons, cards, modals) from shadcn/ui.
+- **Usability:** Interfaces are intuitive—forms clearly label fields, buttons follow predictable patterns, and feedback (loading states, error messages) guides the user.
+- **Accessibility:** Components follow ARIA best practices. Semantic HTML, proper color contrast, and keyboard navigation support are mandatory.
+- **Responsiveness:** Mobile-first breakpoints in Tailwind ensure layouts adapt gracefully from small phones to large desktops.
+- **Consistency:** A shared theme (colors, typography, spacing) makes the app feel cohesive. Reusable components prevent visual drift.
+- **Clarity:** Data tables, charts, and summaries present portfolio information simply, avoiding clutter.
 
-**Accessibility**
-- Semantic HTML elements (`<button>`, `<nav>`, `<header>`).
-- ARIA attributes where needed (e.g., `aria-label` on icon-only buttons).
-- Color contrast that meets WCAG AA standards.
-- Keyboard-friendly navigation (tab order, focus outlines).
-
-**Responsiveness**
-- Mobile-first design using Tailwind’s responsive utilities (`sm:`, `md:`, `lg:`).
-- Flexible grid and flex layouts adapt to screen size.
-- Touch-friendly targets and spacing on smaller screens.
-
----
+**Application of Principles:**
+- Forms use clear labels and focus states.
+- Data Tables include accessible headings and keyboard navigation.
+- Dashboard cards rearrange or stack on smaller screens.
+- Dark mode ensures readability in low-light environments.
 
 ## 3. Styling and Theming
 
-**Styling Approach**
-- **Utility-First CSS** with Tailwind v4 for rapid, consistent styling.
-- **shadcn/ui** for ready-made, themeable UI primitives.
-- No large custom CSS files—styles live alongside components via class names.
+### Styling Approach
+- **Methodology:** Utility-first with Tailwind CSS. Custom component styles live in `components/` alongside JSX, keeping markup and styling close.
+- **No Pre-processors:** Tailwind’s configuration file (`tailwind.config.js`) defines colors, breakpoints, and plugins.
 
-**Theming**
-- Centralized theme in `tailwind.config.js`.
-- Custom color palette (see below).
-- Dark mode support via Tailwind’s `dark:` variant (optional to enable later).
+### Theming
+- **Dark Mode:** Class-based approach (`class="dark"` on `<html>`). Tailwind’s `dark:` variants swap colors.
+- **Theme Configuration:** Centralized in `tailwind.config.js` under `theme.extend`, making it easy to tweak palettes.
 
-**Visual Style**
-- **Modern Flat Design** with subtle shadows and rounded corners.
-- Light glassmorphism accents on data cards (semi-transparent backgrounds with light blur) to add depth without clutter.
+### Visual Style
+- **Overall Style:** Modern flat design with subtle glassmorphism accents on cards (light blur background, soft shadows).
+- **Color Palette:**
+  • Primary: #0EA5E9 (Sky Blue)
+  • Secondary: #10B981 (Emerald)
+  • Accent: #8B5CF6 (Violet)
+  • Neutral 100: #F9FAFB (Light)
+  • Neutral 800: #1F2937 (Dark Surface)
+  • Background Light: #FFFFFF
+  • Background Dark: #111827
+  • Error: #EF4444 (Red)
+  • Success: #22C55E (Green)
 
-**Color Palette**
-- Primary:   indigo-600 (#4F46E5)
-- Primary-Light: indigo-300 (#A5B4FC)
-- Secondary: emerald-500 (#10B981)
-- Accent:    amber-500 (#F59E0B)
-- Background: gray-100 (#F3F4F6)
-- Surface:    white (#FFFFFF)
-- Text Primary: gray-900 (#111827)
-- Text Secondary: gray-500 (#6B7280)
-- Error:      red-500 (#EF4444)
-
-**Fonts**
-- Primary font: **Inter** (system-legible, modern sans-serif).
-- Fallbacks: `system-ui`, `-apple-system`, `BlinkMacSystemFont`, `Segoe UI`.
-
----
+- **Typography:**
+  • Font Family: “Inter”, system-sans serif fallback
+  • Headings: 600 weight for clear hierarchy
+  • Body: 400 weight for readability
+  • Line-height: 1.5 for text blocks
 
 ## 4. Component Structure
 
-**Organization**
-- `components/ui/`: Atoms and molecules from shadcn/ui (Buttons, Inputs, Cards).
-- `components/data-table.tsx`, `components/chart-area-interactive.tsx`: Example organisms for tables and charts.
-- New feature components go under `components/feature-name/` to keep them grouped.
+### Organization
+- **app/**: Contains page files and layouts (e.g., `app/dashboard/`).
+- **components/**: Reusable UI parts (DataTable, Card, Modal, Button).
+- **lib/**: Business logic (portfolio calculations, API clients).
+- **db/schema/**: Drizzle ORM schema definitions (auth, assets, transactions).
 
-**Reusability**
-- Small, focused components that accept props (e.g., `<Button variant="primary">`).
-- Avoid one-off styles—encapsulate repeating patterns in a single component.
+### Reuse and Maintainability
+- Each component lives in its own folder with a clear name (e.g., `components/AddTransactionModal/`).
+- Props interfaces define inputs and callbacks, making components predictable.
+- Shared hooks (e.g., `usePortfolio()`) centralize data fetching logic.
 
-**Component-Based Benefits**
-- **Maintainability**: Change a component in one place, and all its uses update automatically.
-- **Testability**: Easier to write isolated unit tests.
-- **Collaboration**: Designers and developers share a common vocabulary (Atoms > Molecules > Organisms).
-
----
+**Benefits:**
+- Quick onboarding for new developers.
+- Easier testing and debugging.
+- Isolation prevents unintended style or state leaks.
 
 ## 5. State Management
 
-**Current Approach**
-- **React Hooks** (`useState`, `useEffect`) for local component state (chat input, toggles).
-- **Server Components** fetch protected data (calendar events, tasks) via Next.js data fetching methods.
+- **Local UI State:** React hooks (`useState`, `useReducer`) handle open/close modals, form values, and other view-specific states.
+- **Server State:** React Query (recommended out of the box) manages data fetching, caching, and background updates for price feeds and portfolio data.
+- **Global State:** React Context API holds theme (light/dark) and authentication status (session) so components can read user info or theme without prop drilling.
 
-**Data Fetching**
-- **SWR** (or React Query) is recommended for client-side data fetching to handle caching, revalidation, and background refresh.
-
-**Future Growth**
-- As chat interactions become more complex, consider a lightweight global store like **Zustand** to manage real-time messages and loading states.
-
----
+**Flow:**
+1. On page load, a query fetches user portfolio via Next.js API route.
+2. React Query caches and shares data across components (Charts, Tables).
+3. UI events (e.g., adding a transaction) invalidate queries, triggering refetch for a fresh view.
 
 ## 6. Routing and Navigation
 
-**Next.js App Router**
-- File-based routes under `app/`.
-- **Layouts**: Shared wrappers (`app/layout.tsx`, `app/(auth)/layout.tsx`) for common UI (navigation bars, footers).
-- **Route Grouping**: `(auth)/`, `(dashboard)/`, `(chat)/` help isolate related pages and layouts.
+- **Routing Library:** Built-in Next.js App Router uses file-based routing under `app/`.
+- **Layouts & Nested Routes:** Shared layouts (e.g., authenticated layout) wrap pages, providing nav bars and footers.
+- **Dynamic Routes:** e.g., `app/dashboard/[assetId]/page.tsx` for per-asset details.
+- **Navigation Component:** Uses Next.js `<Link>` for client-side transitions with prefetching.
 
-**Navigation**
-- `<Link>` from `next/link` for client-side transitions.
-- Protected routes check session via Better Auth—redirect unauthenticated users to sign-in.
-
----
+**User Flow:**
+1. **/login** → sign in via Better Auth
+2. **/dashboard** → overview cards, data table, charts
+3. **/dashboard/[assetId]** → detailed transaction list
+4. “Add Transaction” opens a modal; on submit, returns to updated dashboard
 
 ## 7. Performance Optimization
 
-- **Server Components** reduce JavaScript bundle size on the client.
-- **Dynamic Imports** (`next/dynamic`) for heavy modules (charts, maps).
-- **Image Optimization** with `next/image` for responsive, lazy-loaded images.
-- **Code Splitting**: Each page only loads the code it needs.
-- **HTTP Caching**: Use appropriate cache headers on API routes and CDN settings on production.
-- **Docker**: Local dev environment mirrors production, catching environment-related issues early.
-
----
+- **Code Splitting:** Next.js automatically splits pages; heavy components (charts) use `next/dynamic` for lazy loading.
+- **Image Optimization:** `next/image` compresses and serves correct sizes.
+- **Bundle Analysis:** Periodic checks with `@next/bundle-analyzer` to detect large imports.
+- **CSS Tree-Shaking:** Tailwind JIT removes unused styles.
+- **API Caching:** Stale-while-revalidate patterns in React Query and Next.js ISR for price-feed endpoints.
+- **Docker Multi-Stage Build:** Produces a small production image, speeding deployments.
 
 ## 8. Testing and Quality Assurance
 
-**Unit Testing**
-- **Jest** + **React Testing Library** for component tests.
-- Mock API calls with **MSW** (Mock Service Worker) to simulate chat endpoints.
+- **Unit Tests:** Jest + React Testing Library for components and utility functions (e.g., calculation logic in `lib/`).
+- **Integration Tests:** Verify interaction between components and hooks.
+- **End-to-End Tests:** Playwright or Cypress simulate user flows: sign in, add transaction, view updated portfolio.
+- **Linting & Formatting:** ESLint + Prettier enforce code style and catch common errors.
+- **Type Checking:** Run `tsc --noEmit` in CI to ensure no type errors.
 
-**Integration Testing**
-- Test interactions between components and pages (e.g., chat input → API route → message list update).
-
-**End-to-End (E2E) Testing**
-- **Cypress** or **Playwright** to script real user flows (sign-in, send a chat command, see a new task on the dashboard).
-
-**Linting and Formatting**
-- **ESLint** with TypeScript rules.
-- **Prettier** for consistent code style.
-- **Git Hooks** (Husky) to run lint and tests before commits.
-
-**Continuous Integration**
-- Configure CI (GitHub Actions or similar) to run lint, type checks, unit and E2E tests on each pull request.
-
----
+**CI/CD Integration:** GitHub Actions or similar runs lint, tests, type checks, and a build on each PR.
 
 ## 9. Conclusion and Overall Frontend Summary
 
-The `ai-planner-assistant` frontend uses a modern, modular architecture built on Next.js 15 and TypeScript. It combines utility-first styling (Tailwind), ready-made UI components (shadcn/ui), and type-safe database access (Drizzle ORM) to deliver a responsive, accessible, and high-performance user experience.
+This guideline captures the key aspects of our frontend setup:
+- A **Next.js + TypeScript** foundation for performance and safety.
+- A **component-driven UI** with `shadcn/ui` and Tailwind CSS for rapid, consistent styling.
+- **Drizzle ORM + PostgreSQL** for a reliable, type-safe data layer.
+- **React Query** and React Context for smooth state management.
+- **Accessibility, responsiveness, and usability** baked into our design decisions.
+- **Testing, linting, and CI/CD** ensure code quality and reliability.
 
-Each guideline— from clear design principles to robust testing strategies— ensures we can grow the AI Virtual Assistant with confidence, maintainability, and speed. Unique aspects like Server Components for fast loads, a custom AI chat interface powered by GPT-4o, and Docker-driven developer setup set this project apart and streamline everyone’s workflow.
-
-With these guidelines in hand, new team members and stakeholders can quickly get up to speed, and the codebase will remain organized, performant, and ready for future features. 
-
-Happy coding!
+Together, these choices deliver a scalable, maintainable, and user-friendly portfolio tracker. Developers can confidently build new features—whether it’s live price feeds, advanced charts, or a premium subscription—knowing the frontend architecture is solidly in place.
 
 ---
 **Document Details**
-- **Project ID**: 2518caaa-9e53-4baf-9eb4-78aa128bc12b
-- **Document ID**: 4e1531b8-2bc2-435d-bb8e-9304399cd6dc
+- **Project ID**: 9996f6d0-22b9-4cb2-a2e4-6f42e720cff0
+- **Document ID**: fb68e588-8d6f-4f00-8554-ced729ad245f
 - **Type**: custom
 - **Custom Type**: frontend_guidelines_document
 - **Status**: completed
-- **Generated On**: 2025-10-11T09:53:46.623Z
+- **Generated On**: 2025-10-12T15:25:16.197Z
 - **Last Updated**: N/A

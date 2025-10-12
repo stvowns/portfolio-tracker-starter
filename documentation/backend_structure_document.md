@@ -1,224 +1,210 @@
 # Backend Structure Document
 
-# Backend Structure Document for ai-planner-assistant
+# Backend Structure Document
+
+This document outlines the backend setup for the Portfolio Tracker Starter project. It explains the architecture, database, APIs, hosting, infrastructure, security, and maintenance in clear, everyday language.
 
 ## 1. Backend Architecture
 
-This section describes how the backend is organized, which frameworks and patterns it uses, and why this setup supports growth, easy maintenance, and good performance.
+We use a modern, modular architecture that makes the backend easy to scale, maintain, and keep fast:
 
-**Key Technologies**
-- Next.js 15 (App Router)
-- Node.js (server runtime)
-- TypeScript (strong typing)
-- Drizzle ORM (type-safe database queries)
-- PostgreSQL (relational database)
-- Better Auth (user authentication)
-- Docker (development environment)
-- OpenAI GPT-4o (AI chat engine)
+- **Next.js App Router & API Routes**: All server logic lives in Next.js API routes. This lets us write both frontend pages and backend functions in one codebase. 
+- **TypeScript**: Every file is typed. This prevents common bugs and makes it easier to understand how data flows.
+- **Drizzle ORM with PostgreSQL**: A type-safe layer over the SQL database. We define our tables in code, and Drizzle generates SQL queries for us. 
+- **Better Auth**: Handles user sign-up, sign-in, session management, and password security out of the box.
+- **Design Patterns**:
+  - **Modular Directory Structure**: We separate concerns into `db/` for schema, `app/api/` for endpoints, `lib/` for business logic, and `components/` for reusable UI pieces.
+  - **Service Layer**: All portfolio or pricing calculations live in `lib/`, making logic easy to test and reuse.
 
-**Overall Design**
-- **Next.js App Router**:  Server Components render dashboard data on the server for performance, and Client Components power interactive pages like the AI chat interface.
-- **API Routes**:  All backend logic (chat processing, CRUD for events/tasks/expenses) lives in Next.js API routes under `/app/api`. This keeps frontend and backend in one codebase.
-- **Layered Structure**:  
-  - **`app/`** handles routing and page logic.
-  - **`db/`** holds Drizzle schema definitions and database connection.
-  - **`lib/`** contains helper modules (authentication checks, OpenAI client).
-  - **`components/`** provides reusable UI bits (charts, tables, chat bubbles).
-
-**Scalability & Maintainability**
-- **Serverless Functions** on Vercel auto-scale with traffic spikes—no manual server management.
-- **TypeScript + Drizzle** ensures compile-time checks from API all the way to the database, reducing runtime errors and simplifying refactoring.
-- **Modular Folder Layout** keeps authentication, chat logic, and database code separated, making it easy for new developers to jump in.
+This setup supports:
+- **Scalability**: Next.js serverless functions can grow with demand, and we can add more database replicas or read-only nodes if needed.
+- **Maintainability**: Clear folders, strong typing, and single-purpose modules keep the code easy to navigate and update.
+- **Performance**: API routes can cache responses, and the combination of TypeScript and Drizzle’s query optimization helps keep server overhead low.
 
 ## 2. Database Management
 
-**Database Technology**
-- **Type**: Relational (SQL)
-- **System**: PostgreSQL
-- **ORM**: Drizzle ORM (type-safe, schema-driven queries)
+We rely on a relational database for safe, structured financial data storage:
 
-**Data Practices**
-- **Schema-First**: Tables and columns are defined in TypeScript (`db/schema.ts`), and Drizzle generates type definitions for queries.
-- **Versioned Migrations**: As your schema evolves, each change is tracked in a migration file, ensuring consistency across development, staging, and production databases.
-- **Connection Pooling**: Node.js connects with a pool of connections to avoid opening and closing on every request, boosting performance under load.
-
-**Data Access Patterns**
-- **Read Operations**: Server Components fetch user data on the server to reduce client-side JavaScript bundle size and speed up initial page loads.
-- **Write Operations**: API routes validate the user’s session, parse incoming JSON (from AI or front-end forms), then call Drizzle methods to insert or update records.
+- **Database Technology**:
+  - **Type**: SQL (relational).
+  - **System**: PostgreSQL.
+- **ORM**: Drizzle ORM connects our TypeScript code to Postgres tables.
+- **Data Organization**:
+  - **Users & Sessions**: Managed by Better Auth in a dedicated `users` and `sessions` table.
+  - **Assets**: Each user can track multiple assets (gold, silver, stocks, funds, crypto).
+  - **Transactions**: Every buy or sell is an individual record, enabling per-lot tracking and FIFO logic.
+- **Best Practices**:
+  - **Type Safety**: Our schema definitions in Drizzle ensure application data always matches database types.
+  - **Migrations**: We use Drizzle’s migration tool to apply schema changes without losing data.
+  - **Indexes**: We add indexes on foreign keys (`user_id`, `asset_id`) to speed up queries for large portfolios.
 
 ## 3. Database Schema
 
-### Human-Readable Description
+Below is a human-readable overview and a PostgreSQL schema for our core tables.
 
-1. **users**
-   - `id` (UUID): Unique identifier.
-   - `email` (text): User’s email, unique.
-   - `hashed_password` (text): Secure password storage.
-   - `created_at` (timestamp): Account creation date.
+### Human-Readable Schema
 
-2. **calendar_events**
-   - `id` (UUID): Unique event ID.
-   - `user_id` (UUID): References `users.id`.
-   - `title` (text): Event name.
-   - `description` (text): Optional details.
-   - `start_time` (timestamp): When the event begins.
-   - `end_time` (timestamp): When the event ends.
-   - `created_at` (timestamp): When the record was created.
+• **users** (managed by Better Auth)
+  – id (unique identifier)
+  – email, hashed_password, created_at
 
-3. **tasks**
-   - `id` (UUID): Unique task ID.
-   - `user_id` (UUID): References `users.id`.
-   - `title` (text): Task description.
-   - `is_complete` (boolean): Completion status.
-   - `due_date` (timestamp): Optional deadline.
-   - `created_at` (timestamp): Record creation time.
+• **assets**
+  – id (unique identifier)
+  – user_id (links to users)
+  – name (e.g., "Gold", "AAPL Stock")
+  – type ("metal", "stock", "fund", "crypto")
+  – ticker_symbol (optional, e.g., "AAPL")
+  – created_at
 
-4. **expenses**
-   - `id` (UUID): Unique expense ID.
-   - `user_id` (UUID): References `users.id`.
-   - `amount` (numeric): Expense amount.
-   - `category` (text): E.g., “Food,” “Transport.”
-   - `incurred_at` (timestamp): When the expense occurred.
-   - `created_at` (timestamp): Record creation time.
+• **transactions**
+  – id (unique identifier)
+  – asset_id (links to assets)
+  – type ("buy" or "sell")
+  – quantity (number)
+  – price_per_unit (decimal)
+  – transaction_date
+  – created_at
 
 ### SQL Schema (PostgreSQL)
+
 ```sql
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
-CREATE TABLE users (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  email TEXT NOT NULL UNIQUE,
+-- Users table (managed by Better Auth)
+CREATE TABLE IF NOT EXISTS users (
+  id UUID PRIMARY KEY,
+  email TEXT UNIQUE NOT NULL,
   hashed_password TEXT NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+  created_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE TABLE calendar_events (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  description TEXT,
-  start_time TIMESTAMP WITH TIME ZONE NOT NULL,
-  end_time TIMESTAMP WITH TIME ZONE NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+-- Assets table
+CREATE TABLE IF NOT EXISTS assets (
+  id UUID PRIMARY KEY,
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL,
+  ticker_symbol TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
 );
+CREATE INDEX ON assets(user_id);
 
-CREATE TABLE tasks (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  is_complete BOOLEAN DEFAULT false,
-  due_date TIMESTAMP WITH TIME ZONE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+-- Transactions table
+CREATE TABLE IF NOT EXISTS transactions (
+  id UUID PRIMARY KEY,
+  asset_id UUID REFERENCES assets(id) ON DELETE CASCADE,
+  type TEXT CHECK (type IN ('buy','sell')) NOT NULL,
+  quantity NUMERIC NOT NULL,
+  price_per_unit NUMERIC NOT NULL,
+  transaction_date TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
 );
-
-CREATE TABLE expenses (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  amount NUMERIC(10,2) NOT NULL,
-  category TEXT NOT NULL,
-  incurred_at TIMESTAMP WITH TIME ZONE NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
-);
+CREATE INDEX ON transactions(asset_id);
 ```
 
 ## 4. API Design and Endpoints
 
-The backend uses a RESTful approach with Next.js API routes. Every route verifies the user’s session via Better Auth.
+We expose a set of RESTful API routes under `app/api/` in Next.js:
 
-**Primary Endpoints**
+- **User & Auth** (via Better Auth)
+  - POST `/api/auth/signup`
+  - POST `/api/auth/signin`
+  - GET `/api/auth/session`
 
-- **POST /api/auth/sign-up**
-  - Purpose: Create a new user account.
-  - Input: `email`, `password`.
-  - Output: Session token.
+- **Portfolio & Assets**
+  - GET `/api/assets` → list current user’s assets
+  - POST `/api/assets` → add a new asset
+  - GET `/api/assets/[id]` → get one asset’s details
 
-- **POST /api/auth/sign-in**
-  - Purpose: Log in an existing user.
-  - Input: `email`, `password`.
-  - Output: Session token.
+- **Transactions**
+  - GET `/api/transactions?assetId=` → list transactions for an asset
+  - POST `/api/transactions` → record a buy or sell
+  - PUT `/api/transactions/[id]` → update a transaction
+  - DELETE `/api/transactions/[id]` → remove a transaction
 
-- **POST /api/chat**
-  - Purpose: Receive a chat message, call OpenAI GPT-4o, parse the intent, and perform a database operation (create event/task/expense).
-  - Input: `{ message: string }`.
-  - Output: `{ messages: [ { role, text } ] }`.
+- **External Price Feeds**
+  - GET `/api/prices/metal?symbol=` → fetch gold/silver prices
+  - GET `/api/prices/fund?code=` → fetch TEFAS fund prices
+  - GET `/api/prices/stock?symbol=` → fetch stock prices
 
-- **GET /api/events**  &  **POST /api/events**
-  - GET retrieves all events for the user.
-  - POST creates a new event (used by both chat and dashboard forms).
-
-- **GET /api/tasks**  &  **POST /api/tasks**
-  - GET lists tasks.
-  - POST adds a task or updates its status.
-
-- **GET /api/expenses**  &  **POST /api/expenses**
-  - GET returns a user’s expenses.
-  - POST records a new expense.
-
-Each endpoint uses JSON over HTTPS and returns clear status codes (200, 201, 401, 400).
+All endpoints validate the authenticated user before returning or modifying data. We use simple JSON request/response formats.
 
 ## 5. Hosting Solutions
 
-- **Frontend & API**: Vercel (serverless functions)
-  - Auto-deploy on git push
-  - Global edge network for low latency
-  - Built-in SSL/TLS
-- **Database**: Managed PostgreSQL (e.g., AWS RDS, DigitalOcean Managed DB)
-  - Automated backups and point-in-time recovery
-  - Vertical scaling (CPU, memory) and read replicas for high load
+We support two main hosting approaches:
 
-**Benefits**
-- **Reliability**: 99.9% uptime SLAs
-- **Scalability**: Automatic function scaling and database read replicas
-- **Cost-Effectiveness**: Pay-as-you-go pricing—only pay for what you use
+1. **Vercel (Recommended for Quick Launch)**
+   - **Serverless Functions**: API routes auto-deploy as serverless endpoints.
+   - **Built-in CDN**: Static assets and pages are cached worldwide.
+   - **Automatic Scaling & Zero Ops**: No manual server configuration.
+   - **Free Tier** for hobby projects.
+
+2. **Containerized Deployment (Docker)**
+   - **Docker Compose** for local development.
+   - **Production on AWS/ECS, GCP Cloud Run, or DigitalOcean App Platform**.
+   - **Managed PostgreSQL** (AWS RDS, Supabase, or ElephantSQL).
+   - **Flexibility** to add sidecars (e.g., Redis for caching) or custom networking.
 
 ## 6. Infrastructure Components
 
-- **Global CDN**: Vercel’s edge network caches static assets (JS, CSS, images) close to users.
-- **Load Balancing**: Vercel routes requests across available serverless instances.
-- **Connection Pooling**: Managed by Drizzle’s database client to reuse connections.
-- **Caching**: Next.js caching headers for server components and optional client-side caching with SWR or React Query.
+To keep the app fast and reliable, we layer in a few key services:
 
-Together, these components ensure fast page loads, handle traffic spikes smoothly, and offer a consistent user experience.
+- **CDN & Static Assets**: Vercel’s CDN (or CloudFront in a custom setup) caches images, scripts, and style files.
+- **Load Balancing & Auto-Scaling**: Handled by Vercel or your container platform, balancing traffic across instances.
+- **Caching**:
+  - **HTTP Caching**: We set cache headers on API responses when prices don’t need to be real-time every second.
+  - **In-Memory Cache (Optional)**: Add Redis for shared caching of external API responses.
+- **Background Jobs**:
+  - **Scheduled Tasks**: Vercel Cron Jobs or a container-based scheduler for daily portfolio summaries and notifications.
+- **Local Development**: Docker Compose spins up Postgres and the Next.js server with one command.
 
 ## 7. Security Measures
 
-- **Authentication**: Better Auth issues HTTP-only cookies for session management.
-- **Authorization**: Each API route checks the session; users can only access their own records.
+We follow industry best practices to keep data safe:
+
+- **Authentication & Authorization**:
+  - Better Auth enforces secure sign-up/sign-in with hashed passwords.
+  - Every API route checks the user’s session before running.
 - **Encryption**:
-  - In transit: HTTPS/TLS for all requests.
-  - At rest: Managed database with built-in disk encryption.
-- **Environment Variables**: Secrets (OpenAI API key, database URL) stored securely in Vercel’s environment settings, never committed to code.
-- **Input Validation & Sanitization**: All incoming JSON is validated against expected types to prevent injection attacks.
+  - **TLS Everywhere**: All traffic (web and database connections) uses SSL/TLS.
+  - **Env Variables**: Secrets (DB passwords, API keys) live in environment variables, never in code.
+- **Rate Limiting & Throttling** (optional)
+  - Implement rate limits on price-fetch endpoints to avoid abuse.
+- **Input Validation**:
+  - We sanitize and validate every request body and query parameter in our API routes.
+- **Compliance**:
+  - If handling personal data (emails), we can add GDPR-friendly features like account data export/deletion.
 
 ## 8. Monitoring and Maintenance
 
-- **Logs & Metrics**:
-  - Vercel Analytics for response times and error rates.
-  - AWS CloudWatch (or DigitalOcean monitoring) for database CPU, memory, and connections.
-- **Error Tracking**: Sentry or LogRocket captures uncaught exceptions and performance bottlenecks.
-- **Health Checks & Alerts**: Automated alerts for high error rates or database connection issues.
-- **Database Backups**: Daily snapshots and point-in-time recovery configured by the managed DB service.
-- **Regular Updates**:
-  - Weekly dependency audits with `npm audit`.
-  - Scheduled schema migrations and code releases via CI/CD pipeline.
+To keep the backend healthy and catch issues early, we use:
+
+- **Error Tracking**: Sentry or LogRocket captures exceptions in serverless functions.
+- **Performance Monitoring**: Vercel Analytics or New Relic tracks response times and throughput.
+- **Database Monitoring**: Cloud provider tools (e.g., AWS CloudWatch) alert on slow queries or high CPU.
+- **Logging**:
+  - Structured logs (JSON) written by `console` or a logger library, shipped to a log service.
+- **Backups & Migrations**:
+  - Daily automated backups of PostgreSQL.
+  - Versioned migrations via Drizzle ensure schema changes are safe.
 
 ## 9. Conclusion and Overall Backend Summary
 
-The ai-planner-assistant backend is built on a modern, full-stack foundation:
-- **Next.js** for unified frontend and serverless backend logic
-- **TypeScript + Drizzle ORM** for end-to-end type safety
-- **PostgreSQL** for reliable, relational data storage
-- **Better Auth** and HTTPS for secure user sessions
-- **Vercel + Managed DB** for hands-off scalability and uptime
+This backend is built to power a robust, personalized portfolio tracker:
 
-This structure supports rapid feature development—like the AI chat interface—while ensuring that as your user base grows, performance remains snappy and data remains safe. By combining serverless functions, a robust database layer, and clear separation of concerns, the project is easy to maintain, extend, and monitor for years to come.
+- It uses Next.js API routes and serverless functions for fast, scalable endpoints.
+- PostgreSQL via Drizzle ORM ensures data integrity and easy schema evolution.
+- Better Auth secures user access.
+- A clear folder structure and TypeScript-driven development make the codebase maintainable.
+- Hosting on Vercel provides zero-ops scaling and a global CDN, with an alternate Docker path for full control.
+- Layers like caching, scheduled jobs, and monitoring round out a production-ready setup.
+
+With this foundation, you can confidently add features—live price feeds, advanced charts, multi-currency views, notifications, and premium access—while resting easy that the backend is secure, performant, and easy to extend.
 
 ---
 **Document Details**
-- **Project ID**: 2518caaa-9e53-4baf-9eb4-78aa128bc12b
-- **Document ID**: 9dc03897-39dd-4ed3-a7c4-9cef71370063
+- **Project ID**: 9996f6d0-22b9-4cb2-a2e4-6f42e720cff0
+- **Document ID**: c56e4987-c8d8-403a-8e40-0a26cede5a83
 - **Type**: custom
 - **Custom Type**: backend_structure_document
 - **Status**: completed
-- **Generated On**: 2025-10-11T09:52:22.018Z
+- **Generated On**: 2025-10-12T15:23:06.033Z
 - **Last Updated**: N/A
