@@ -1,14 +1,17 @@
 flowchart TD
-  Start[Landing Page]
-  SignUpPage[Sign Up Page]
-  SignInPage[Sign In Page]
-  AuthAPI[Authentication API Endpoint]
-  DashboardPage[Dashboard Page]
-  Start -->|Select Sign Up| SignUpPage
-  Start -->|Select Sign In| SignInPage
-  SignUpPage -->|Submit Credentials| AuthAPI
-  SignInPage -->|Submit Credentials| AuthAPI
-  AuthAPI -->|Success| DashboardPage
-  AuthAPI -->|Error| SignUpPage
-  AuthAPI -->|Error| SignInPage
-  DashboardPage -->|Click Logout| Start
+    AppStart[Open App]
+    AppStart --> AuthCheck{User Authenticated?}
+    AuthCheck -->|No| AuthPage[Login Signup Page]
+    AuthPage -->|Submit| AuthCheck
+    AuthCheck -->|Yes| Dashboard[Dashboard Page]
+    Dashboard --> Portfolio[View Portfolio]
+    Dashboard --> NewTxn[Add New Transaction]
+    Dashboard --> PriceFetch[Fetch Live Prices]
+    Portfolio --> AssetList[Asset List]
+    AssetList --> AssetDetail[Asset Detail]
+    AssetDetail --> Portfolio
+    NewTxn --> TxnForm[Transaction Form]
+    TxnForm -->|Save| SaveTxn[Save Transaction]
+    SaveTxn --> Dashboard
+    PriceFetch --> PriceAPI[External Price API]
+    PriceAPI --> Dashboard

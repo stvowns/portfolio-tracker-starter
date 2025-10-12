@@ -1,90 +1,159 @@
 # Tech Stack Document
 
-This document explains the key technologies chosen for the **codeguide-starter** project. It’s written in everyday language so anyone—technical or not—can understand why each tool was picked and how it supports the application.
+This document explains, in simple terms, the technology choices for the multi-asset portfolio tracker starter. It breaks down each piece of the stack and shows how they fit together to deliver a fast, secure, and user-friendly application.
 
 ## 1. Frontend Technologies
-The frontend is everything the user sees and interacts with. For this project, we’ve used:
+
+Our frontend (what the user sees and interacts with) is built with the following key technologies:
 
 - **Next.js (App Router)**
-  - A React framework that makes page routing, server-side rendering, and API routes very simple.
-  - Enhances user experience by pre-rendering pages on the server or at build time, leading to faster initial load.
-- **React 18**
-  - The underlying library for building user interfaces with reusable components.
-  - Provides a smooth, interactive experience thanks to its virtual DOM and modern hooks.
-- **TypeScript**
-  - A superset of JavaScript that adds types (labels for data).
-  - Helps catch errors early during development and makes the code easier to maintain.
-- **CSS (globals.css & theme.css)**
-  - **globals.css** applies base styles (fonts, colors, resets) across the entire app.
-  - **dashboard/theme.css** defines the look and feel specific to the dashboard area.
-  - This separation keeps styles organized and avoids accidental style conflicts.
+  • Provides a solid foundation for server-rendered and client-rendered pages.  
+  • Lets us set up API routes alongside our pages, keeping frontend and backend code in one project.
 
-By combining these tools, we have a clear structure (Next.js folders for pages and layouts), safer code (TypeScript), and flexible styling with vanilla CSS.
+- **React & TypeScript**
+  • React offers reusable UI building blocks (components).  
+  • TypeScript adds type checking, catching errors early and making code easier to maintain.
+
+- **Tailwind CSS (v4)**
+  • A utility-first CSS framework that speeds up styling with pre-built classes.  
+  • Enables quick theming (light/dark mode) and consistent, responsive layouts.
+
+- **shadcn/ui Component Library**
+  • A collection of ready-made UI elements (cards, data tables, buttons, inputs).  
+  • Fully customizable so the look and feel stays consistent with your brand.
+
+- **React State & Data Fetching**
+  • Basic React hooks (`useState`, `useEffect`) handle local component state.  
+  • As the app grows, we can add a library like React Query or SWR for caching and synchronizing server data (e.g., live price updates).
+
+- **Charting Library (e.g., Chart.js or Recharts)**
+  • Powers interactive graphs—daily/weekly bar charts, portfolio trends.  
+  • Helps users visualize performance at a glance.
+
+**How this enhances user experience**
+- Fast initial page loads via server rendering.  
+- Smooth, interactive interfaces with pre-built components.  
+- Consistent styling and easy theming for light/dark modes.  
+- Clear data visualizations to help users understand their portfolio at a glance.
 
 ## 2. Backend Technologies
-The backend handles data, user accounts, and the logic behind the scenes. Our choices here are:
+
+Behind the scenes, these technologies handle data storage, user accounts, and business logic:
 
 - **Next.js API Routes**
-  - Allows us to write server-side code (`route.ts` files) alongside our frontend in the same project.
-  - Runs on Node.js, so we can handle requests like sign-up, sign-in, and data fetching in one place.
-- **Node.js Runtime**
-  - The JavaScript environment on the server that executes our API routes.
-- **bcrypt** (npm package)
-  - A library for hashing passwords securely before storing them.
-  - Ensures that even if someone got access to our data, raw passwords aren’t visible.
-- **(Optional) NextAuth.js or JWT**
-  - While this starter kit shows a custom authentication flow, it can easily integrate services like NextAuth.js for email-based login or JWT (JSON Web Tokens) for stateless sessions.
+  • Serverless functions within the Next.js app.  
+  • Host endpoints for portfolio CRUD operations and external data fetching.
 
-These components work together to receive user credentials, verify or store them securely, manage sessions or tokens, and deliver protected data back to the frontend.
+- **Node.js & TypeScript**
+  • Runs the API routes and connection logic.  
+  • TypeScript ensures the backend code is as type-safe as the frontend.
+
+- **Drizzle ORM**
+  • A lightweight, type-safe way to define and run SQL queries.  
+  • Perfect for complex financial queries (average cost, FIFO logic for fund sales).
+
+- **PostgreSQL**
+  • A powerful, open-source relational database.  
+  • Stores users, assets, transactions, and handles queries that power the dashboard.
+
+- **better-auth**
+  • Simplifies user authentication (sign-up, sign-in, session management).  
+  • Supports secure, personalized portfolios tied to each user account.
+
+**How these components work together**
+1. A user logs in via **better-auth**.
+2. Frontend calls Next.js API routes to read/write data.  
+3. **Drizzle ORM** sends type-safe SQL queries to **PostgreSQL**.  
+4. The server responds, and the UI updates to show the latest portfolio data.
 
 ## 3. Infrastructure and Deployment
-Infrastructure covers where and how we host the app, as well as how changes get delivered:
 
-- **Git & GitHub**
-  - Version control system (Git) and remote hosting (GitHub) keep track of all code changes and allow team collaboration.
-- **Vercel (or Netlify)**
-  - A popular hosting service optimized for Next.js, with one-click deployments and global content delivery.
-  - Automatically rebuilds and deploys the site whenever code is pushed to the main branch.
-- **GitHub Actions (CI/CD)**
-  - Automates tasks like linting (ESLint), formatting (Prettier), and running any tests you add.
-  - Ensures that only clean, tested code goes live.
+To keep the project reliable, scalable, and easy to maintain, we’ve chosen:
 
-Together, these tools provide a reliable, scalable setup where every code change is tested and deployed quickly, with minimal manual work.
+- **Version Control: Git & GitHub**
+  • Tracks changes and enables team collaboration.  
+  • Pull requests and code reviews ensure quality before merging.
+
+- **Hosting Platform: Vercel**
+  • Native support for Next.js, automatic builds and deployments on every push.  
+  • Global CDN ensures fast page loads for users worldwide.
+
+- **Containerization: Docker & Docker Compose**
+  • Defines a consistent environment for local development and production.  
+  • Simplifies setup of the database and app dependencies.
+
+- **CI/CD: GitHub Actions (optional)**
+  • Automates testing, builds, and deployments on code changes.  
+  • Ensures that only passing code reaches production.
+
+- **Environment Management**
+  • Environment variables (via Vercel or `.env` files) keep secrets like database URLs and API keys secure.
+
+- **Scheduled Tasks: Vercel Cron Jobs (optional)**
+  • Can run daily portfolio summary calculations and send notifications to users.
+
+**Benefits**
+- Zero-downtime deployments and quick rollbacks.  
+- Consistent environments across developer machines and production.  
+- Automated testing and deployment pipelines for faster releases.
 
 ## 4. Third-Party Integrations
-While this starter kit is minimal by design, it already includes or can easily add:
 
-- **bcrypt**
-  - For secure password hashing (included as an npm dependency).
-- **NextAuth.js** (optional)
-  - A full-featured authentication library supporting email/password, OAuth, and more.
-- **Sentry or LogRocket** (optional)
-  - For real-time error tracking and performance monitoring in production.
+We connect to outside services to enrich the user experience:
 
-These integrations help extend the app’s capabilities without building every feature from scratch.
+- **Real-Time Market Data APIs**
+  • TEFAS for fund prices, commodity APIs for gold/silver rates, stock exchange feeds.  
+  • Integrated via Next.js API routes to fetch and cache prices server-side.
+
+- **Currency Exchange Rates**
+  • Optional service to convert portfolio values between currencies (e.g., USD/TRY).
+
+- **Push Notifications** (future)
+  • Services like OneSignal or Firebase Cloud Messaging for daily portfolio updates.
+
+- **Analytics** (optional)
+  • Google Analytics or similar to track user engagement and help guide feature improvements.
+
+**Advantages**
+- Keeps portfolio values up-to-date without manual entry.  
+- Displays multi-currency totals for international users.  
+- Enables alerting users about significant portfolio changes.
 
 ## 5. Security and Performance Considerations
-We’ve baked in several measures to keep users safe and the app running smoothly:
 
-Security:
-- Passwords are never stored in plain text—bcrypt hashes them with a random salt.
-- API routes can implement CSRF protection and input validation to block malicious requests.
-- Session tokens or cookies are marked secure and HttpOnly to prevent theft via JavaScript.
+To protect user data and deliver a responsive experience, we’ve implemented:
 
-Performance:
-- Server-side rendering (SSR) and static site generation (SSG) in Next.js deliver pages faster.
-- Code splitting and lazy-loaded components ensure users only download what they need.
-- Global CSS and theme files are small and cached by the browser for quick repeat visits.
+- **Secure Authentication**
+  • Session tokens or JWTs managed by **better-auth**.  
+  • Password hashing and secure cookies over HTTPS.
 
-These strategies work together to give users a fast, secure experience every time.
+- **Data Protection**
+  • Environment variables to store secrets and API keys.  
+  • Parameterized queries via Drizzle ORM to prevent SQL injection.
+
+- **Performance Optimizations**
+  • Server-side rendering (SSR) for critical pages to speed up initial load.  
+  • Code-splitting and lazy loading of non-essential components.  
+  • Caching of external API responses to reduce latency and API usage.
+
+- **Error Handling & Monitoring**
+  • Graceful error messages when external APIs fail.  
+  • Logging (e.g., Sentry) to catch and report runtime errors in production.
 
 ## 6. Conclusion and Overall Tech Stack Summary
-In building **codeguide-starter**, we chose technologies that:
 
-- Align with modern web standards (Next.js, React, TypeScript).
-- Provide a clear, file-based project structure for rapid onboarding.
-- Offer built-in support for server-side rendering, API routes, and static assets.
-- Emphasize security through password hashing, session management, and safe defaults.
-- Enable easy scaling and future enhancements via modular code and optional integrations.
+In summary, this stack was chosen to deliver a maintainable, scalable, and user-friendly portfolio tracker starter:
 
-This stack strikes a balance between simplicity for newcomers and flexibility for experienced teams. It accelerates development of a secure authentication flow and a polished dashboard, while leaving room to plug in databases, test suites, and advanced features as the project grows.
+- Frontend: Next.js, React, TypeScript, Tailwind CSS, shadcn/ui
+- Backend: Next.js API routes, Node.js, TypeScript, Drizzle ORM, PostgreSQL, better-auth
+- Infrastructure: Git/GitHub, Vercel, Docker, Docker Compose, CI/CD pipelines
+- Third-Party Integrations: Market data APIs, currency converters, notifications, analytics
+- Security & Performance: Secure auth, SSR, caching, error monitoring
+
+This combination ensures:
+- **Rapid development** with reusable components and type safety
+- **High performance** through server rendering and optimized code delivery
+- **Robust security** with proven authentication methods and safe database queries
+- **Flexibility** to add new features—charts, mobile support, premium plans—without changing the core architecture
+
+By choosing these technologies, we lay a solid foundation that meets today’s needs and scales easily for tomorrow’s innovations.
