@@ -1,15 +1,25 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Bot, MessageSquare } from "lucide-react";
+import { Bot, MessageSquare, DollarSign, Coins, Moon, Sun } from "lucide-react";
+import { useTheme } from "next-themes";
 import Link from "next/link";
 import { AddTransactionDialog } from "@/components/portfolio/add-transaction-dialog";
 import { PortfolioDashboard } from "./portfolio-dashboard";
-import { DemoPriceFetcher } from "@/components/demo-price-fetcher";
-import { GoldPriceTest } from "@/components/gold-price-test";
-import { AllPricesTest } from "@/components/all-prices-test";
 
 export default function Page() {
+  const [currency, setCurrency] = useState<"TRY" | "USD">("TRY");
+  const { theme, setTheme } = useTheme();
+
+  const toggleCurrency = () => {
+    setCurrency(prev => prev === "TRY" ? "USD" : "TRY");
+  };
+
+  const toggleTheme = () => {
+    setTheme(theme === "dark" ? "light" : "dark");
+  };
+
   return (
     <div className="@container/main flex flex-1 flex-col gap-2">
       <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -21,6 +31,39 @@ export default function Page() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {/* Currency Toggle */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleCurrency}
+              className="gap-2"
+            >
+              {currency === "TRY" ? (
+                <>
+                  <Coins className="h-4 w-4" />
+                  TRY
+                </>
+              ) : (
+                <>
+                  <DollarSign className="h-4 w-4" />
+                  USD
+                </>
+              )}
+            </Button>
+
+            {/* Dark Mode Toggle */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleTheme}
+            >
+              {theme === "dark" ? (
+                <Sun className="h-4 w-4" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
+            </Button>
+
             <AddTransactionDialogDialogWithData />
             <Link href="/chat">
               <Button variant="outline" size="lg" className="gap-2">
@@ -32,22 +75,7 @@ export default function Page() {
           </div>
         </div>
         
-        {/* All Prices Test - Tüm Kategoriler */}
-        <div className="px-4 lg:px-6">
-          <AllPricesTest />
-        </div>
-        
-        {/* Gold Price Test - Canlı Altın Fiyatı */}
-        <div className="px-4 lg:px-6">
-          <GoldPriceTest />
-        </div>
-        
-        {/* Borsa MCP Demo - Canlı Fiyat Çekici */}
-        <div className="px-4 lg:px-6">
-          <DemoPriceFetcher />
-        </div>
-        
-        <PortfolioDashboard />
+        <PortfolioDashboard currency={currency} />
       </div>
     </div>
   )

@@ -123,7 +123,11 @@ interface Summary {
     totalAssets: number;
 }
 
-const PortfolioDashboard: React.FC = () => {
+interface PortfolioDashboardProps {
+    currency?: "TRY" | "USD";
+}
+
+const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY" }) => {
     const [assets, setAssets] = useState<Asset[]>([]);
     const [summary, setSummary] = useState<Summary | null>(null);
     const [loading, setLoading] = useState(true);
@@ -132,14 +136,19 @@ const PortfolioDashboard: React.FC = () => {
     const [isAssetDetailOpen, setIsAssetDetailOpen] = useState(false);
     const [isResetting, setIsResetting] = useState(false);
 
+    const USD_TRY_RATE = 35.12; // TODO: Gerçek zamanlı kur çekebiliriz
+
     const formatCurrency = (amount: number | null | undefined) => {
         if (amount === null || amount === undefined) {
-            return '₺0,00';
+            return currency === 'TRY' ? '₺0,00' : '$0.00';
         }
-        return new Intl.NumberFormat('tr-TR', {
+        
+        const displayAmount = currency === 'USD' ? amount / USD_TRY_RATE : amount;
+        
+        return new Intl.NumberFormat(currency === 'TRY' ? 'tr-TR' : 'en-US', {
             style: 'currency',
-            currency: 'TRY'
-        }).format(amount);
+            currency: currency
+        }).format(displayAmount);
     };
 
     const formatPercent = (percent: number | null | undefined) => {
@@ -266,24 +275,28 @@ const PortfolioDashboard: React.FC = () => {
         
         const emojiMap: Record<string, string> = {
             'gold': '🏆',
+            'silver': '🥈',
             'stock': '📈',
             'fund': '💰',
             'crypto': '₿',
             'bond': '📕',
             'currency': '💵',
             'commodity': '🌾',
-            'real_estate': '🏠'
+            'real_estate': '🏠',
+            'cash': '💵'
         };
         
         assets.forEach(asset => {
             const currentValue = asset.holdings.currentValue || 0;
-            if (!typeMap.has(asset.assetType)) {
-                typeMap.set(asset.assetType, { 
+            const assetType = asset.assetType.toLowerCase(); // Normalize to lowercase
+            
+            if (!typeMap.has(assetType)) {
+                typeMap.set(assetType, { 
                     value: 0, 
-                    emoji: emojiMap[asset.assetType] || '📊' 
+                    emoji: emojiMap[assetType] || '📊' 
                 });
             }
-            const current = typeMap.get(asset.assetType)!;
+            const current = typeMap.get(assetType)!;
             current.value += currentValue;
         });
         
@@ -533,10 +546,13 @@ const PortfolioDashboard: React.FC = () => {
                                     <div className="flex items-start gap-2">
                                         <Trophy className="h-4 w-4 text-green-600 mt-0.5" />
                                         <div className="flex-1 min-w-0">
+                                            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">
+                                                En Karlı
+                                            </p>
                                             <p className="text-sm font-medium truncate">
                                                 {performanceDetails.best.name}
                                             </p>
-                                            <p className="text-xs text-green-600">
+                                            <p className="text-xs text-green-600 font-semibold">
                                                 {formatPercent(performanceDetails.best.holdings.profitLossPercent)}
                                             </p>
                                         </div>
@@ -546,10 +562,13 @@ const PortfolioDashboard: React.FC = () => {
                                     <div className="flex items-start gap-2">
                                         <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5" />
                                         <div className="flex-1 min-w-0">
+                                            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">
+                                                En Zararlı
+                                            </p>
                                             <p className="text-sm font-medium truncate">
                                                 {performanceDetails.worst.name}
                                             </p>
-                                            <p className="text-xs text-red-600">
+                                            <p className="text-xs text-red-600 font-semibold">
                                                 {formatPercent(performanceDetails.worst.holdings.profitLossPercent)}
                                             </p>
                                         </div>
@@ -672,7 +691,7 @@ const PortfolioDashboard: React.FC = () => {
             {/* Assets Table */}
             <AssetsTable 
                 assets={assets}
-                currency="TRY"
+                currency={currency}
                 onAssetClick={handleAssetClick}
                 onTransactionAdded={refreshData}
                 onAssetDeleted={refreshData}

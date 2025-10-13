@@ -140,6 +140,21 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Asset'in para birimi ile transaction'ın para biriminin uyumlu olduğunu kontrol et
+        const assetCurrency = asset[0].currency || "TRY";
+        const transactionCurrency = validatedData.currency || "TRY";
+        
+        if (assetCurrency !== transactionCurrency) {
+            return Response.json(
+                { 
+                    success: false, 
+                    error: `Bu varlık ${assetCurrency} ile işlem görmüştür. Farklı para birimi (${transactionCurrency}) ile işlem yapamazsınız.`,
+                    assetCurrency: assetCurrency
+                },
+                { status: 400 }
+            );
+        }
+
         // Toplam tutarı hesapla
         const totalAmount = validatedData.quantity * validatedData.pricePerUnit;
         
@@ -155,6 +170,7 @@ export async function POST(request: NextRequest) {
                 pricePerUnit: validatedData.pricePerUnit,
                 totalAmount: totalAmount,
                 transactionDate: new Date(validatedData.transactionDate),
+                currency: validatedData.currency || "TRY",
                 notes: validatedData.notes,
             })
             .returning();

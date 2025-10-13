@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
                 symbol: assets.symbol,
                 assetType: assets.assetType,
                 category: assets.category,
+                currency: assets.currency,
                 currentPrice: assets.currentPrice,
                 lastUpdated: assets.lastUpdated,
                 createdAt: assets.createdAt,
@@ -107,17 +108,26 @@ export async function GET(request: NextRequest) {
                 const netAmount = buyAmount - sellAmount;
                 const averagePrice = netQuantity > 0 ? netAmount / netQuantity : 0;
 
+                // Gerçekleşen kar/zarar (Realized P&L) - satış geliri - satış maliyeti (FIFO yaklaşımı)
+                const realizedProfitLoss = sellQuantity > 0 
+                    ? sellAmount - (sellQuantity * (buyAmount / buyQuantity))
+                    : 0;
+
                 // Mevcut değer hesapla (eğer current price varsa)
                 const currentValue = asset.currentPrice && netQuantity > 0 
                     ? parseFloat(asset.currentPrice) * netQuantity 
                     : null;
 
-                const profitLoss = currentValue && netAmount > 0 
+                // Gerçekleşmemiş kar/zarar (Unrealized P&L)
+                const unrealizedProfitLoss = currentValue && netAmount > 0 
                     ? currentValue - netAmount 
                     : null;
 
-                const profitLossPercent = profitLoss && netAmount > 0 
-                    ? (profitLoss / netAmount) * 100 
+                // Toplam kar/zarar = gerçekleşen + gerçekleşmemiş
+                const profitLoss = realizedProfitLoss + (unrealizedProfitLoss || 0);
+                
+                const profitLossPercent = netAmount > 0 
+                    ? (profitLoss / buyAmount) * 100 
                     : null;
 
                 return {
@@ -229,6 +239,7 @@ export async function POST(request: NextRequest) {
                 assetType: validatedData.assetType,
                 symbol: validatedData.symbol,
                 category: validatedData.category,
+                currency: validatedData.currency || "TRY",
             })
             .returning();
 

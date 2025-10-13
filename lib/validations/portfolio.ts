@@ -7,7 +7,8 @@ export const AssetTypeSchema = z.enum([
     "STOCK",
     "FUND",
     "CRYPTO",
-    "EUROBOND"
+    "EUROBOND",
+    "ETF"
 ]);
 
 // Transaction türleri için enum
@@ -20,6 +21,7 @@ export const CreateAssetSchema = z.object({
     symbol: z.string().optional(),
     category: z.string().optional(),
     portfolioId: z.string().optional(),
+    currency: z.enum(["TRY", "USD", "EUR"]).optional().default("TRY"),
 });
 
 // Varlık güncelleme şeması
@@ -32,6 +34,7 @@ export const CreateTransactionSchema = z.object({
     quantity: z.number().positive("Miktar pozitif olmalıdır"),
     pricePerUnit: z.number().positive("Birim fiyat pozitif olmalıdır"),
     transactionDate: z.string().refine((date) => !isNaN(Date.parse(date)), "Geçersiz tarih formatı"),
+    currency: z.enum(["TRY", "USD", "EUR"]).default("TRY"),
     notes: z.string().max(500, "Not çok uzun").optional(),
 }).refine((data) => {
     // Toplam tutarı hesapla

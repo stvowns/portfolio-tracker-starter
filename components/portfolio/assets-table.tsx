@@ -150,6 +150,20 @@ export function AssetsTable({
         }).format(num);
     };
 
+    // Miktar formatlaması - akıllıca (tam sayılar için ondalık yok, kripto için esnek)
+    const formatQuantity = (quantity: number) => {
+        // Tam sayı ise, ondalık gösterme
+        if (Number.isInteger(quantity)) {
+            return quantity.toLocaleString('tr-TR');
+        }
+        
+        // Ondalık varsa, maksimum 8 basamak göster ama trailing zeros'ları kaldır
+        return parseFloat(quantity.toFixed(8)).toLocaleString('tr-TR', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 8
+        });
+    };
+
     const formatPercent = (percent: number | null | undefined) => {
         if (percent === null || percent === undefined) {
             return '-';
@@ -441,7 +455,7 @@ export function AssetsTable({
                                         <TableCell className="text-right">
                                             <div className="flex flex-col text-right">
                                                 <span className="font-mono">
-                                                    {formatNumber(asset.holdings.netQuantity, 4)}
+                                                    {formatQuantity(asset.holdings.netQuantity)}
                                                 </span>
                                                 <span className="text-xs text-muted-foreground">
                                                     {asset.holdings.totalTransactions} işlem

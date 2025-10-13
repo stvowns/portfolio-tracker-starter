@@ -31,11 +31,12 @@ import { toast } from "sonner";
 // Form schema
 const transactionSchema = z.object({
     assetName: z.string().min(1, "Varlık adı gereklidir"),
-    assetType: z.enum(["GOLD", "SILVER", "STOCK", "FUND", "CRYPTO", "EUROBOND"]),
+    assetType: z.enum(["GOLD", "SILVER", "STOCK", "FUND", "CRYPTO", "EUROBOND", "ETF", "CASH"]),
     transactionType: z.enum(["BUY", "SELL"]),
     quantity: z.number().positive("Miktar pozitif olmalıdır"),
     pricePerUnit: z.number().positive("Fiyat pozitif olmalıdır"),
     transactionDate: z.string().min(1, "Tarih gereklidir"),
+    currency: z.enum(["TRY", "USD", "EUR"]).default("TRY"),
     notes: z.string().optional(),
 });
 
@@ -84,6 +85,7 @@ export function AddTransactionDialog({
             assetName: defaultValues?.assetName || "",
             transactionType: defaultValues?.transactionType || "BUY",
             transactionDate: new Date().toISOString().split("T")[0],
+            currency: "TRY",
         },
     });
 
@@ -145,7 +147,9 @@ export function AddTransactionDialog({
             "STOCK": "Hisse Senedi",
             "FUND": "Yatırım Fonu",
             "CRYPTO": "Kripto Para",
-            "EUROBOND": "Eurobond"
+            "EUROBOND": "Eurobond",
+            "ETF": "ETF",
+            "CASH": "Nakit (TRY)"
         };
         return labels[type] || type;
     };
@@ -173,6 +177,7 @@ export function AddTransactionDialog({
                 body: JSON.stringify({
                     name: data.assetName,
                     assetType: data.assetType,
+                    currency: data.currency || "TRY",
                 }),
             });
 
@@ -199,6 +204,7 @@ export function AddTransactionDialog({
                     quantity: data.quantity,
                     pricePerUnit: data.pricePerUnit,
                     transactionDate: data.transactionDate,
+                    currency: data.currency || "TRY",
                     notes: data.notes,
                 }),
             });
@@ -298,6 +304,8 @@ export function AddTransactionDialog({
                                 <SelectItem value="FUND">Yatırım Fonu</SelectItem>
                                 <SelectItem value="CRYPTO">Kripto Para</SelectItem>
                                 <SelectItem value="EUROBOND">Eurobond</SelectItem>
+                                <SelectItem value="ETF">ETF</SelectItem>
+                                <SelectItem value="CASH">Nakit (TRY)</SelectItem>
                             </SelectContent>
                         </Select>
                         {errors.assetType && (
@@ -380,7 +388,7 @@ export function AddTransactionDialog({
                             )}
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="pricePerUnit">Birim Fiyat (₺)</Label>
+                            <Label htmlFor="pricePerUnit">Birim Fiyat</Label>
                             <Input
                                 type="number"
                                 step="any"
@@ -391,6 +399,27 @@ export function AddTransactionDialog({
                                 <p className="text-sm text-red-500">{errors.pricePerUnit.message}</p>
                             )}
                         </div>
+                    </div>
+
+                    {/* Currency Selection */}
+                    <div className="space-y-2">
+                        <Label htmlFor="currency">Para Birimi</Label>
+                        <Select 
+                            onValueChange={(value) => setValue("currency", value as any)}
+                            defaultValue="TRY"
+                        >
+                            <SelectTrigger>
+                                <SelectValue placeholder="Para birimi seçin" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="TRY">₺ Türk Lirası (TRY)</SelectItem>
+                                <SelectItem value="USD">$ Amerikan Doları (USD)</SelectItem>
+                                <SelectItem value="EUR">€ Euro (EUR)</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        {errors.currency && (
+                            <p className="text-sm text-red-500">{errors.currency.message}</p>
+                        )}
                     </div>
 
                     {/* Transaction Date */}

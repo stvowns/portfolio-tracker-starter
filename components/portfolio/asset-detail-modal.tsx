@@ -71,7 +71,7 @@ export function AssetDetailModal({ asset, isOpen, onClose, onTransactionAdded }:
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(false);
     const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false);
-    const [currency, setCurrency] = useState<"TRY" | "USD">("TRY");
+    const [currency, setCurrency] = useState<"TRY" | "USD" | "EUR">("TRY");
     const [transactionDialogDefaults, setTransactionDialogDefaults] = useState<{
         assetType: string;
         assetName: string;
@@ -82,15 +82,35 @@ export function AssetDetailModal({ asset, isOpen, onClose, onTransactionAdded }:
 
     const formatCurrency = (amount: number | null | undefined) => {
         if (amount === null || amount === undefined) {
-            return currency === "TRY" ? '₺0,00' : '$0.00';
+            return currency === "TRY" ? '₺0,00' : currency === "USD" ? '$0.00' : '€0.00';
         }
         
-        const displayAmount = currency === "TRY" ? amount : amount / 34; // Basit kur çevrimi (daha sonra API'den alınabilir)
+        // Kur çevrimi (basit - daha sonra API'den alınabilir)
+        let displayAmount = amount;
+        if (currency === "USD") {
+            displayAmount = amount / 34; // 1 USD = 34 TRY
+        } else if (currency === "EUR") {
+            displayAmount = amount / 37; // 1 EUR = 37 TRY
+        }
         
-        return new Intl.NumberFormat(currency === "TRY" ? 'tr-TR' : 'en-US', {
+        const locale = currency === "TRY" ? 'tr-TR' : currency === "USD" ? 'en-US' : 'de-DE';
+        
+        return new Intl.NumberFormat(locale, {
             style: 'currency',
             currency: currency
         }).format(displayAmount);
+    };
+
+    // Miktar formatlaması - akıllıca
+    const formatQuantity = (quantity: number) => {
+        // Tam sayı ise, ondalık gösterme
+        if (Number.isInteger(quantity)) {
+            return quantity.toString();
+        }
+        
+        // Ondalık varsa, maksimum 8 basamak göster ama trailing zeros'ları kaldır
+        // 0.00042 -> "0.00042", 1.5 -> "1.5", 1.50000 -> "1.5"
+        return parseFloat(quantity.toFixed(8)).toString();
     };
 
     const formatDate = (date: string | Date) => {
@@ -160,8 +180,12 @@ export function AssetDetailModal({ asset, isOpen, onClose, onTransactionAdded }:
     useEffect(() => {
         if (isOpen && asset?.id) {
             fetchTransactions();
+            // Asset'in currency'sine göre default currency'yi set et
+            if (asset.currency) {
+                setCurrency(asset.currency as "TRY" | "USD" | "EUR");
+            }
         }
-    }, [isOpen, asset?.id, fetchTransactions]);
+    }, [isOpen, asset?.id, asset?.currency, fetchTransactions]);
 
     const handleTransactionAdded = async (transactionData?: { transactionType: "BUY" | "SELL"; quantity: number; pricePerUnit: number; notes?: string }) => {
         // Transaction listesini backend'den yeniden çek (gerçek veriyi almak için)
@@ -192,33 +216,34 @@ export function AssetDetailModal({ asset, isOpen, onClose, onTransactionAdded }:
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-6xl w-[95vw] max-h-[95vh] overflow-y-auto overflow-x-hidden">
-                <DialogHeader className="space-y-2">
-                    <div className="flex items-center justify-between gap-4">
+            <DialogContent className="max-w-[98vw] w-[98vw] max-h-[98vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6">
+                <DialogHeader className="space-y-2 pb-2">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <span className="text-xl font-bold truncate">{asset.name}</span>
-                            <Badge variant="secondary" className="shrink-0">
+                            <span className="text-lg sm:text-xl font-bold truncate">{asset.name}</span>
+                            <Badge variant="secondary" className="shrink-0 text-xs">
                                 {getAssetTypeLabel(asset.assetType)}
                             </Badge>
                         </div>
-                        <Select value={currency} onValueChange={(v) => setCurrency(v as "TRY" | "USD")}>
-                            <SelectTrigger className="w-24 shrink-0">
+                        <Select value={currency} onValueChange={(v) => setCurrency(v as "TRY" | "USD" | "EUR")}>
+                            <SelectTrigger className="w-28 shrink-0">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="TRY">₺ TRY</SelectItem>
                                 <SelectItem value="USD">$ USD</SelectItem>
+                                <SelectItem value="EUR">€ EUR</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
-                    <DialogDescription>
+                    <DialogDescription className="text-xs sm:text-sm">
                         Varlık detayları ve işlem geçmişi
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="grid gap-4">
+                <div className="grid gap-3 sm:gap-4">
                     {/* Summary Cards */}
-                    <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+                    <div className="grid gap-2 sm:gap-3 grid-cols-2 xl:grid-cols-4">
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
                                 <CardTitle className="text-xs font-medium text-muted-foreground">Miktar</CardTitle>
@@ -227,7 +252,7 @@ export function AssetDetailModal({ asset, isOpen, onClose, onTransactionAdded }:
                             <CardContent className="pb-2 pt-0">
                                 <div className="flex flex-col items-center justify-center min-h-[2.5rem] text-center">
                                     <div className="text-sm font-bold leading-tight">
-                                        {netQuantity.toFixed(2)}
+                                        {formatQuantity(netQuantity)}
                                     </div>
                                     <p className="text-[10px] text-muted-foreground">
                                         {asset.symbol || "adet"}
@@ -299,10 +324,10 @@ export function AssetDetailModal({ asset, isOpen, onClose, onTransactionAdded }:
 
                     {/* Transactions Section */}
                     <div className="space-y-3">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                             <div>
-                                <h3 className="text-lg font-semibold">İşlem Geçmişi</h3>
-                                <p className="text-sm text-muted-foreground">
+                                <h3 className="text-base sm:text-lg font-semibold">İşlem Geçmişi</h3>
+                                <p className="text-xs sm:text-sm text-muted-foreground">
                                     Bu varlık için yapılan alım/satım işlemleri
                                 </p>
                             </div>
@@ -316,6 +341,7 @@ export function AssetDetailModal({ asset, isOpen, onClose, onTransactionAdded }:
                                     setIsAddTransactionOpen(true);
                                 }}
                                 size="sm"
+                                className="w-full sm:w-auto"
                             >
                                 <Plus className="h-4 w-4 mr-2" />
                                 Yeni İşlem
@@ -339,49 +365,49 @@ export function AssetDetailModal({ asset, isOpen, onClose, onTransactionAdded }:
                                         {transactions.map((transaction, index) => (
                                             <div 
                                                 key={transaction.id}
-                                                className={`p-3 hover:bg-muted/50 transition-colors ${
+                                                className={`p-2 sm:p-3 hover:bg-muted/50 transition-colors ${
                                                     index !== transactions.length - 1 ? 'border-b' : ''
                                                 }`}
                                             >
-                                                <div className="flex items-center justify-between gap-2 w-full">
-                                                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                                                        <div className={`p-2 rounded-full ${
+                                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 w-full">
+                                                    <div className="flex items-center gap-2 min-w-0 flex-1 w-full sm:w-auto">
+                                                        <div className={`p-1.5 sm:p-2 rounded-full shrink-0 ${
                                                             transaction.transactionType === "BUY" 
                                                                 ? 'bg-green-100 text-green-600' 
                                                                 : 'bg-red-100 text-red-600'
                                                         }`}>
                                                             {transaction.transactionType === "BUY" ? 
-                                                                <Plus className="h-4 w-4" /> : 
-                                                                <Minus className="h-4 w-4" />
+                                                                <Plus className="h-3 w-3 sm:h-4 sm:w-4" /> : 
+                                                                <Minus className="h-3 w-3 sm:h-4 sm:w-4" />
                                                             }
                                                         </div>
-                                                        <div className="space-y-1">
-                                                            <div className="flex items-center gap-2">
+                                                        <div className="space-y-1 min-w-0 flex-1">
+                                                            <div className="flex items-center gap-2 flex-wrap">
                                                                 <Badge 
                                                                     variant="secondary" 
-                                                                    className={getTransactionTypeColor(transaction.transactionType)}
+                                                                    className={`${getTransactionTypeColor(transaction.transactionType)} text-xs shrink-0`}
                                                                 >
                                                                     {transaction.transactionType === "BUY" ? 'Alış' : 'Satış'}
                                                                 </Badge>
-                                                                <span className="text-sm text-muted-foreground flex items-center gap-1">
+                                                                <span className="text-xs sm:text-sm text-muted-foreground flex items-center gap-1 shrink-0">
                                                                     <Calendar className="h-3 w-3" />
                                                                     {formatDate(transaction.transactionDate)}
                                                                 </span>
                                                             </div>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="font-medium text-base">
-                                                                    {transaction.quantity.toFixed(4)} adet
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <span className="font-medium text-sm sm:text-base whitespace-nowrap">
+                                                                    {formatQuantity(transaction.quantity)} adet
                                                                 </span>
                                                                 <span className="text-muted-foreground">×</span>
-                                                                <span className="font-mono text-sm">
+                                                                <span className="font-mono text-xs sm:text-sm break-all">
                                                                     {formatCurrency(transaction.pricePerUnit)}
                                                                 </span>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-2 shrink-0">
-                                                        <div className="text-right min-w-[120px]">
-                                                            <div className={`text-lg font-bold ${
+                                                    <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-between sm:justify-end">
+                                                        <div className="text-left sm:text-right min-w-0 sm:min-w-[120px] flex-1 sm:flex-none">
+                                                            <div className={`text-base sm:text-lg font-bold break-all ${
                                                                 transaction.transactionType === "BUY" 
                                                                     ? 'text-green-600' 
                                                                     : 'text-red-600'
@@ -395,7 +421,7 @@ export function AssetDetailModal({ asset, isOpen, onClose, onTransactionAdded }:
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        <div className="flex gap-1 shrink-0">
+                                                        <div className="flex gap-1 shrink-0 flex-wrap">
                                                             <Button
                                                                 variant="outline"
                                                                 size="sm"

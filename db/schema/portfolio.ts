@@ -8,7 +8,9 @@ export const ASSET_TYPES = {
     STOCK: "STOCK",
     FUND: "FUND",
     CRYPTO: "CRYPTO",
-    EUROBOND: "EUROBOND"
+    EUROBOND: "EUROBOND",
+    ETF: "ETF",
+    CASH: "CASH"
 } as const;
 
 export type AssetType = typeof ASSET_TYPES[keyof typeof ASSET_TYPES];
@@ -50,6 +52,7 @@ export const assets = sqliteTable("assets", {
     symbol: text("symbol"), // AAPL, BTC, vs.
     name: text("name").notNull(), // Apple Inc., Bitcoin, Çeyrek Altın vs.
     category: text("category"), // Tech Stock, Kıymetli Maden vs.
+    currency: text("currency").default("TRY"), // Asset'in para birimi
     currentPrice: real("current_price"),
     lastUpdated: integer("last_updated", { mode: "timestamp" }),
     
@@ -84,6 +87,7 @@ export const transactions = sqliteTable("transactions", {
     pricePerUnit: real("price_per_unit").notNull(),
     totalAmount: real("total_amount").notNull(),
     transactionDate: integer("transaction_date", { mode: "timestamp" }).notNull(),
+    currency: text("currency").notNull().default("TRY"),
     notes: text("notes"),
     createdAt: integer("created_at", { mode: "timestamp" })
         .$defaultFn(() => new Date())
