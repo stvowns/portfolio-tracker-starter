@@ -1,10 +1,137 @@
-# Project Instructions
+# Portföy Takip Sistemi - Proje Dokümantasyonu
 
-## Getting Started
+## Proje Hakkında
 
-Welcome to your new **portfolio-tracker-starter** project! This project was created using CodeGuide CLI and comes with a structured task management system to guide your development process.
+Bu proje, kullanıcıların yatırım varlıklarını takip etmelerini sağlayan modern bir portföy yönetim uygulamasıdır. Altın, gümüş, hisse senetleri, yatırım fonları, kripto paralar ve eurobondlar gibi çeşitli varlık türlerini destekler.
 
-## First Steps
+## 🎯 Temel Özellikler
+
+- **Çoklu Varlık Desteği**: Altın (çeyrek, yarım, tam, cumhuriyet, has altın, bilezik çeşitleri), gümüş, hisse senetleri, fonlar, kriptolar
+- **Detaylı Varlık Analizi**: Tıklanabilir varlık kartları ile holding detayları, ortalama maliyet, kar/zarar
+- **İşlem Yönetimi**: Alım/satım işlemleri ve işlem geçmişi takibi
+- **Anlık Dashboard**: Toplam portföy değeri, kar/zarar, performans metrikleri
+- **Modern Arayüz**: Shadcn/ui bileşenleri ile responsive tasarım
+- **SQLite Veritabanı**: Hızlı ve lokal veri saklama
+
+## 🏗️ Teknoloji Stack
+
+- **Frontend**: Next.js 15, TypeScript, Tailwind CSS
+- **UI Components**: Shadcn/ui
+- **Veritabanı**: SQLite with Drizzle ORM
+- **Authentication**: Better Auth
+- **Development**: Turbopack, ESLint
+
+## 📊 Dashboard Özellikleri
+
+### Özet Kartları
+- **Toplam Değer**: Portföyün mevcut toplam değeri
+- **Toplam Maliyet**: Yapılan toplam yatırım miktarı
+- **Kar/Zarar**: Anlık kar/zarar durumu
+- **Performans**: Yüzüsel getiri oranı
+
+### Varlıklarım Tablosu
+- Tıklanabilir varlık satırları
+- Miktar, ortalama maliyet, mevcut değer bilgileri
+- Kar/zarar göstergeleri
+- Asset type ve kategori badge'leri
+
+### Varlık Detay Modalı
+- Varlığa tıklandığında açılan detaylı Modal
+- Miktar, ortalama maliyet, mevcut değer, kar/zarar
+- Tüm işlem geçmişi (alış/satış)
+- Yeni işlem ekleme butonu
+
+## 📝 Varlık Türleri ve Seçenekleri
+
+### Altın Çeşitleri
+- Çeyrek Altın
+- Yarım Altın  
+- Tam Altın
+- Cumhuriyet Altını
+- Ata Altın
+- Has Altın (24 Ayar)
+- 14 Ayar Bilezik
+- 18 Ayar Bilezik
+- 22 Ayar Bilezik
+- Gram Altın
+- Reşat Altını
+- Hamit Altını
+
+### Diğer Varlıklar
+- **Gümüş**: Gram Gümüş, Gümüş Külçe, Gümüş Bilezik, Gümüş Para
+- **Hisse Senetleri**: Manuel giriş (ör: AAPL, THYAO)
+- **Yatırım Fonları**: Manuel giriş (ör: BIST 100)
+- **Kripto Paralar**: Manuel giriş (ör: Bitcoin, Ethereum)
+- **Eurobond*: Manuel giriş
+
+## 🚀 Kurulum ve Çalıştırma
+
+### Gereksinimler
+- Node.js 18+ 
+- npm
+
+### Kurulum
+```bash
+# Proje klonlama
+git clone <repository-url>
+cd portfolio-tracker-starter
+
+# Bağımlılıkları yükle
+npm install
+
+# Veritabanını başlat
+npm run db:push
+
+# Geliştirme sunucusunu başlat
+npm run dev
+```
+
+### Uygulama Erişimi
+- Dashboard: http://localhost:3001 (veya 3000)
+- Authentication: Giriş kaydı gerekmez (demo mode)
+
+## 📂 Proje Yapısı
+
+```
+portfolio-tracker-starter/
+├── app/                    # Next.js Application Router
+│   ├── api/portfolio/      # Portfolio API endpoints
+│   ├── dashboard/          # Dashboard sayfası
+│   └── (auth pages)/       # Authentication sayfaları
+├── components/
+│   ├── portfolio/          # Portfolio UI bileşenleri
+│   │   ├── add-transaction-dialog.tsx
+│   │   ├── asset-detail-modal.tsx
+│   │   ├── assets-table.tsx
+│   │   └── portfolio-summary-cards.tsx
+│   └── ui/                 # Shadcn/ui temel bileşenler
+├── db/
+│   └── schema/             # Drizzle database şemaları
+├── lib/
+│   ├── auth-utils.ts       # Authentication utils
+│   ├── validations/        # Zod validation şemaları
+│   └── utils.ts            # Genel utility fonksiyonları
+└── documentation/          # Proje dokümantasyonu
+```
+
+## 🔧 Development Commands
+
+```bash
+# Geliştirme sunucusu
+npm run dev
+
+# Veritabanı işlemleri
+npm run db:push        # Schema'yı uygula
+npm run db:reset       # Veritabanını sıfırla
+npm run db:studio      # Drizzle Studio (DB GUI)
+
+# Build ve Test
+npm run build
+npm run start
+npm run lint
+```
+
+## 📋 Görev Yönetimi
 
 ### 1. View Your Tasks
 The first thing you should do is look at the tasks that have been generated for your project:

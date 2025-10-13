@@ -1,34 +1,37 @@
-import { pgTable, text, timestamp, numeric, pgEnum, uuid, index } from "drizzle-orm/pg-core";
+import { sqliteTable, text, integer, real, index } from "drizzle-orm/sqlite-core";
 import { user } from "./auth";
 
-// Asset türleri için enum
-export const assetTypeEnum = pgEnum("asset_type", [
-    "GOLD",
-    "SILVER", 
-    "STOCK",
-    "FUND",
-    "CRYPTO",
-    "EUROBOND"
-]);
+// Asset türleri için string sabitleri
+export const ASSET_TYPES = {
+    GOLD: "GOLD",
+    SILVER: "SILVER",
+    STOCK: "STOCK",
+    FUND: "FUND",
+    CRYPTO: "CRYPTO",
+    EUROBOND: "EUROBOND"
+} as const;
 
-// Transaction türleri için enum  
-export const transactionTypeEnum = pgEnum("transaction_type", [
-    "BUY",
-    "SELL"
-]);
+export type AssetType = typeof ASSET_TYPES[keyof typeof ASSET_TYPES];
+
+// Transaction türleri için string sabitleri  
+export const TRANSACTION_TYPES = {
+    BUY: "BUY",
+    SELL: "SELL"
+} as const;
+
+export type TransactionType = typeof TRANSACTION_TYPES[keyof typeof TRANSACTION_TYPES];
 
 // Portfolyolar tablosu
-export const portfolios = pgTable("portfolios", {
-    id: uuid("id").primaryKey().defaultRandom(),
+export const portfolios = sqliteTable("portfolios", {
+    id: text("id").primaryKey(),
     userId: text("user_id")
-        .notNull()
-        .references(() => user.id, { onDelete: "cascade" }),
+        .notNull(),
     name: text("name").notNull().default("Ana Portföy"),
     baseCurrency: text("base_currency").notNull().default("TRY"),
-    createdAt: timestamp("created_at")
+    createdAt: integer("created_at", { mode: "timestamp" })
         .$defaultFn(() => new Date())
         .notNull(),
-    updatedAt: timestamp("updated_at")
+    updatedAt: integer("updated_at", { mode: "timestamp" })
         .$defaultFn(() => new Date())
         .notNull()
 }, (table) => {
@@ -38,23 +41,21 @@ export const portfolios = pgTable("portfolios", {
 });
 
 // Varlıklar tablosu
-export const assets = pgTable("assets", {
-    id: uuid("id").primaryKey().defaultRandom(),
+export const assets = sqliteTable("assets", {
+    id: text("id").primaryKey(),
     userId: text("user_id")
-        .notNull()
-        .references(() => user.id, { onDelete: "cascade" }),
-    portfolioId: uuid("portfolio_id")
-        .references(() => portfolios.id, { onDelete: "cascade" }),
-    assetType: assetTypeEnum("asset_type").notNull(),
+        .notNull(),
+    portfolioId: text("portfolio_id"),
+    assetType: text("asset_type").notNull(),
     symbol: text("symbol"), // AAPL, BTC, vs.
     name: text("name").notNull(), // Apple Inc., Bitcoin, Çeyrek Altın vs.
     category: text("category"), // Tech Stock, Kıymetli Maden vs.
-    currentPrice: numeric("current_price", { precision: 15, scale: 4 }),
-    lastUpdated: timestamp("last_updated"),
-    createdAt: timestamp("created_at")
+    currentPrice: real("current_price"),
+    lastUpdated: integer("last_updated", { mode: "timestamp" }),
+    createdAt: integer("created_at", { mode: "timestamp" })
         .$defaultFn(() => new Date())
         .notNull(),
-    updatedAt: timestamp("updated_at")
+    updatedAt: integer("updated_at", { mode: "timestamp" })
         .$defaultFn(() => new Date())
         .notNull()
 }, (table) => {
@@ -66,24 +67,22 @@ export const assets = pgTable("assets", {
 });
 
 // İşlemler tablosu
-export const transactions = pgTable("transactions", {
-    id: uuid("id").primaryKey().defaultRandom(),
+export const transactions = sqliteTable("transactions", {
+    id: text("id").primaryKey(),
     userId: text("user_id")
-        .notNull()
-        .references(() => user.id, { onDelete: "cascade" }),
-    assetId: uuid("asset_id")
-        .notNull()
-        .references(() => assets.id, { onDelete: "cascade" }),
-    transactionType: transactionTypeEnum("transaction_type").notNull(),
-    quantity: numeric("quantity", { precision: 15, scale: 8 }).notNull(),
-    pricePerUnit: numeric("price_per_unit", { precision: 15, scale: 4 }).notNull(),
-    totalAmount: numeric("total_amount", { precision: 15, scale: 4 }).notNull(),
-    transactionDate: timestamp("transaction_date").notNull(),
+        .notNull(),
+    assetId: text("asset_id")
+        .notNull(),
+    transactionType: text("transaction_type").notNull(),
+    quantity: real("quantity").notNull(),
+    pricePerUnit: real("price_per_unit").notNull(),
+    totalAmount: real("total_amount").notNull(),
+    transactionDate: integer("transaction_date", { mode: "timestamp" }).notNull(),
     notes: text("notes"),
-    createdAt: timestamp("created_at")
+    createdAt: integer("created_at", { mode: "timestamp" })
         .$defaultFn(() => new Date())
         .notNull(),
-    updatedAt: timestamp("updated_at")
+    updatedAt: integer("updated_at", { mode: "timestamp" })
         .$defaultFn(() => new Date())
         .notNull()
 }, (table) => {

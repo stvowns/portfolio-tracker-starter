@@ -19,7 +19,7 @@ export const CreateAssetSchema = z.object({
     assetType: AssetTypeSchema,
     symbol: z.string().optional(),
     category: z.string().optional(),
-    portfolioId: z.string().uuid().optional(),
+    portfolioId: z.string().optional(),
 });
 
 // Varlık güncelleme şeması
@@ -27,7 +27,7 @@ export const UpdateAssetSchema = CreateAssetSchema.partial();
 
 // Yeni işlem oluşturma şeması
 export const CreateTransactionSchema = z.object({
-    assetId: z.string().uuid("Geçersiz varlık ID"),
+    assetId: z.string().min(1, "Geçersiz varlık ID"),
     transactionType: TransactionTypeSchema,
     quantity: z.number().positive("Miktar pozitif olmalıdır"),
     pricePerUnit: z.number().positive("Birim fiyat pozitif olmalıdır"),
@@ -54,14 +54,14 @@ export const UpdatePortfolioSchema = CreatePortfolioSchema.partial();
 // Asset listeleme için query parametreleri
 export const AssetListQuerySchema = z.object({
     assetType: AssetTypeSchema.optional(),
-    portfolioId: z.string().uuid().optional(),
+    portfolioId: z.string().optional(),
     page: z.number().int().positive().default(1),
     limit: z.number().int().positive().max(100).default(20),
 });
 
 // Transaction listeleme için query parametreleri
 export const TransactionListQuerySchema = z.object({
-    assetId: z.string().uuid().optional(),
+    assetId: z.string().optional(),
     transactionType: TransactionTypeSchema.optional(),
     startDate: z.string().refine((date) => !isNaN(Date.parse(date)), "Geçersiz başlangıç tarihi").optional(),
     endDate: z.string().refine((date) => !isNaN(Date.parse(date)), "Geçersiz bitiş tarihi").optional(),

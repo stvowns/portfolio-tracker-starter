@@ -7,6 +7,7 @@ import {
     TransactionListQuery 
 } from "@/lib/validations/portfolio";
 import { eq, and, desc, asc, gte, lte } from "drizzle-orm";
+import { generateId } from "@/lib/utils";
 
 /**
  * GET /api/portfolio/transactions
@@ -146,12 +147,13 @@ export async function POST(request: NextRequest) {
         const newTransaction = await db
             .insert(transactions)
             .values({
+                id: generateId(),
                 userId: session.user.id,
                 assetId: validatedData.assetId,
                 transactionType: validatedData.transactionType,
-                quantity: validatedData.quantity.toString(),
-                pricePerUnit: validatedData.pricePerUnit.toString(),
-                totalAmount: totalAmount.toString(),
+                quantity: validatedData.quantity,
+                pricePerUnit: validatedData.pricePerUnit,
+                totalAmount: totalAmount,
                 transactionDate: new Date(validatedData.transactionDate),
                 notes: validatedData.notes,
             })

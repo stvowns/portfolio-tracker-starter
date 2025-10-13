@@ -38,8 +38,9 @@ interface AssetsTableProps {
     assets: Asset[];
     isLoading?: boolean;
     currency?: string;
-    onAssetClick?: (assetId: string) => void;
+    onAssetClick?: (asset: Asset) => void;
     onAddTransaction?: () => void;
+    onTransactionAdded?: () => void;
 }
 
 export function AssetsTable({ 
@@ -47,7 +48,8 @@ export function AssetsTable({
     isLoading = false, 
     currency = "TRY",
     onAssetClick,
-    onAddTransaction
+    onAddTransaction,
+    onTransactionAdded
 }: AssetsTableProps) {
     const [isClient, setIsClient] = useState(false);
 
@@ -196,7 +198,7 @@ export function AssetsTable({
                                     <TableRow 
                                         key={asset.id}
                                         className={onAssetClick ? "cursor-pointer hover:bg-muted/50" : ""}
-                                        onClick={() => onAssetClick?.(asset.id)}
+                                        onClick={() => onAssetClick?.(asset)}
                                     >
                                         <TableCell>
                                             <div className="flex flex-col gap-1">

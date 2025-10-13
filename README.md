@@ -1,13 +1,22 @@
-# Codeguide Starter Fullstack
+# Portföy Takip Sistemi
 
-A modern web application starter template built with Next.js 15, featuring authentication, database integration, and dark mode support.
+Modern bir yatırım portföyü takip uygulaması. Altın, gümüş, hisse senetleri, yatırım fonları, kripto paralar ve eurobondlar gibi çeşitli varlıkları detaylı bir şekilde takip edebilirsiniz.
 
-## Tech Stack
+## 🎯 Temel Özellikler
+
+- **🏆 Çoklu Varlık Desteği**: Altın (12 farklı çeşit), gümüş, hisse senetleri, yatırım fonları, kripto paralar, eurobondlar
+- **📊 Detaylı Dashboard**: Toplam portföy değeri, kar/zarar, performans metrikleri
+- **🔍 Varlık Detay Modalı**: Varlığa tıklayarak holding detaylarını, işlem geçmişini görüntüleme
+- **➕ Kolay İşlem Yönetimi**: Alış/satım işlemlerini hızlıca ekleme
+- **💰 Kar/Zarar Takibi**: Otomatik ortalama maliyet ve kâr/zarar hesaplama
+- **🎨 Modern Arayüz**: Shadcn/ui ile responsive, karanlık mod destekli tasarım
+
+## 🏗️ Teknoloji Stack
 
 - **Framework:** [Next.js 15](https://nextjs.org/) (App Router with Turbopack)
 - **Language:** TypeScript
 - **Authentication:** [Better Auth](https://better-auth.com/)
-- **Database:** [Drizzle ORM](https://orm.drizzle.team/) with PostgreSQL
+- **Database:** [SQLite](https://sqlite.org/) with [Drizzle ORM](https://orm.drizzle.team/)
 - **Styling:** [Tailwind CSS v4](https://tailwindcss.com/)
 - **UI Components:** [shadcn/ui](https://ui.shadcn.com/) (New York style)
 - **Theme System:** [next-themes](https://github.com/pacocoursey/next-themes)

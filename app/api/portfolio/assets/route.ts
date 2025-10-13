@@ -6,7 +6,8 @@ import {
     AssetListQuerySchema,
     AssetListQuery 
 } from "@/lib/validations/portfolio";
-import { eq, and, sum, count } from "drizzle-orm";
+import { eq, and, sum, count, sql } from "drizzle-orm";
+import { generateId } from "@/lib/utils";
 
 /**
  * GET /api/portfolio/assets
@@ -201,6 +202,7 @@ export async function POST(request: NextRequest) {
         const newAsset = await db
             .insert(assets)
             .values({
+                id: generateId(),
                 userId: session.user.id,
                 portfolioId: validatedData.portfolioId,
                 name: validatedData.name,

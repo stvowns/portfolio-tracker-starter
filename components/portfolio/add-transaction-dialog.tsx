@@ -43,11 +43,27 @@ type TransactionFormData = z.infer<typeof transactionSchema>;
 interface AddTransactionDialogProps {
     trigger?: React.ReactNode;
     onSuccess?: () => void;
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
+    defaultValues?: {
+        assetType?: string;
+        assetName?: string;
+        transactionType?: "BUY" | "SELL";
+    };
 }
 
-export function AddTransactionDialog({ trigger, onSuccess }: AddTransactionDialogProps) {
-    const [isOpen, setIsOpen] = useState(false);
+export function AddTransactionDialog({ 
+    trigger, 
+    onSuccess, 
+    open: controlledOpen,
+    onOpenChange,
+    defaultValues 
+}: AddTransactionDialogProps) {
+    const [internalIsOpen, setInternalIsOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    
+    const isOpen = controlledOpen !== undefined ? controlledOpen : internalIsOpen;
+    const setIsOpen = onOpenChange || setInternalIsOpen;
 
     const {
         register,
@@ -59,13 +75,45 @@ export function AddTransactionDialog({ trigger, onSuccess }: AddTransactionDialo
     } = useForm<TransactionFormData>({
         resolver: zodResolver(transactionSchema),
         defaultValues: {
-            transactionType: "BUY",
+            assetType: defaultValues?.assetType || "",
+            assetName: defaultValues?.assetName || "",
+            transactionType: defaultValues?.transactionType || "BUY",
             transactionDate: new Date().toISOString().split("T")[0],
         },
     });
 
     const assetType = watch("assetType");
     const transactionType = watch("transactionType");
+
+    // Altın çeşitleri ve diğer varlık türleri için seçenekler
+    const getAssetOptions = (type: string) => {
+        switch (type) {
+            case "GOLD":
+                return [
+                    { value: "Çeyrek Altın", label: "Çeyrek Altın" },
+                    { value: "Yarım Altın", label: "Yarım Altın" },
+                    { value: "Tam Altın", label: "Tam Altın" },
+                    { value: "Cumhuriyet Altını", label: "Cumhuriyet Altını" },
+                    { value: "Ata Altın", label: "Ata Altın" },
+                    { value: "Has Altın (24 Ayar)", label: "Has Altın (24 Ayar)" },
+                    { value: "14 Ayar Bilezik", label: "14 Ayar Bilezik" },
+                    { value: "18 Ayar Bilezik", label: "18 Ayar Bilezik" },
+                    { value: "22 Ayar Bilezik", label: "22 Ayar Bilezik" },
+                    { value: "Gram Altın", label: "Gram Altın" },
+                    { value: "Reşat Altını", label: "Reşat Altını" },
+                    { value: "Hamit Altını", label: "Hamit Altını" }
+                ];
+            case "SILVER":
+                return [
+                    { value: "Gram Gümüş", label: "Gram Gümüş" },
+                    { value: "Gümüş Külçe", label: "Gümüş Külçe" },
+                    { value: "Gümüş Bilezik", label: "Gümüş Bilezik" },
+                    { value: "Gümüş Para", label: "Gümüş Para" }
+                ];
+            default:
+                return [];
+        }
+    };
 
     const getAssetTypeLabel = (type: string) => {
         const labels: Record<string, string> = {
@@ -135,6 +183,8 @@ export function AddTransactionDialog({ trigger, onSuccess }: AddTransactionDialo
         }
     };
 
+    const assetOptions = getAssetOptions(assetType);
+
     const defaultTrigger = (
         <Button className="gap-2">
             <Plus className="h-4 w-4" />
@@ -180,10 +230,25 @@ export function AddTransactionDialog({ trigger, onSuccess }: AddTransactionDialo
                     {/* Asset Name */}
                     <div className="space-y-2">
                         <Label htmlFor="assetName">Varlık Adı</Label>
-                        <Input
-                            {...register("assetName")}
-                            placeholder="ör: Çeyrek Altın, AAPL, Bitcoin"
-                        />
+                        {assetOptions.length > 0 ? (
+                            <Select onValueChange={(value) => setValue("assetName", value)}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Altın çeşidini seçin" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {assetOptions.map((option) => (
+                                        <SelectItem key={option.value} value={option.value}>
+                                            {option.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        ) : (
+                            <Input
+                                {...register("assetName")}
+                                placeholder="ör: AAPL, Bitcoin, Hisse Senedi Adı"
+                            />
+                        )}
                         {errors.assetName && (
                             <p className="text-sm text-red-500">{errors.assetName.message}</p>
                         )}
