@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import { PortfolioSummaryCards } from "@/components/portfolio/portfolio-summary-cards";
 import { AssetsTable } from "@/components/portfolio/assets-table";
+import { AddTransactionDialog } from "@/components/portfolio/add-transaction-dialog";
+import { AssetDetailModal } from "@/components/portfolio/asset-detail-modal";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, Wallet, TrendingUp, TrendingDown, Minus } from "lucide-react";
-import { AssetDetailModal } from "@/components/portfolio/asset-detail-modal";
 
 // Mock data for testing
 function getMockAssets() {
