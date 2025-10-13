@@ -71,11 +71,60 @@ export function AssetDetailModal({ asset, isOpen, onClose, onTransactionAdded }:
         
         setLoading(true);
         try {
-            const response = await fetch(`/api/portfolio/transactions?assetId=${asset.id}`);
-            if (response.ok) {
-                const result = await response.json();
-                setTransactions(result.success ? result.data.transactions : []);
+            // Mock transactions for testing
+            const mockTransactions = [
+                {
+                    id: "tx1",
+                    assetId: asset.id,
+                    assetName: asset.name,
+                    assetSymbol: asset.symbol,
+                    assetType: asset.assetType,
+                    transactionType: "BUY",
+                    quantity: 1,
+                    pricePerUnit: 2800,
+                    totalAmount: 2800,
+                    transactionDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+                    notes: "İlk alım"
+                },
+                {
+                    id: "tx2", 
+                    assetId: asset.id,
+                    assetName: asset.name,
+                    assetSymbol: asset.symbol,
+                    assetType: asset.assetType,
+                    transactionType: "BUY",
+                    quantity: 2,
+                    pricePerUnit: 2850,
+                    totalAmount: 5700,
+                    transactionDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+                    notes: "İkinci alım - fırsat"
+                }
+            ];
+            
+            if (asset.name === "BIST 100") {
+                mockTransactions[0] = {
+                    ...mockTransactions[0],
+                    quantity: 50,
+                    pricePerUnit: 125,
+                    totalAmount: 6250,
+                    notes: "Fon alımı"
+                };
+                mockTransactions[1] = {
+                    ...mockTransactions[1],
+                    quantity: 30,
+                    pricePerUnit: 125.50,
+                    totalAmount: 3765,
+                    notes: "Ek fon alımı"
+                };
             }
+            
+            setTransactions(mockTransactions);
+            
+            // const response = await fetch(`/api/portfolio/transactions?assetId=${asset.id}`);
+            // if (response.ok) {
+            //     const result = await response.json();
+            //     setTransactions(result.success ? result.data.transactions : []);
+            // }
         } catch (error) {
             console.error("Error fetching transactions:", error);
         } finally {
