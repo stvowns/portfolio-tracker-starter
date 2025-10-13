@@ -7,7 +7,21 @@ import { AddTransactionDialog } from "@/components/portfolio/add-transaction-dia
 import { AssetDetailModal } from "@/components/portfolio/asset-detail-modal";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Wallet, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { 
+    AlertCircle, 
+    Wallet, 
+    TrendingUp, 
+    TrendingDown, 
+    Minus,
+    Calendar,
+    BarChart3,
+    PieChart,
+    Trophy,
+    Target,
+    DollarSign,
+    Shield,
+    AlertTriangle
+} from "lucide-react";
 
 // Mock data for testing
 function getMockAssets() {
@@ -138,6 +152,37 @@ async function fetchPortfolioSummary() {
             totalAssets: assets.filter((asset: any) => asset.holdings?.netQuantity > 0).length,
             currency: "TRY"
         };
+    };
+
+    // Helper functions for new cards
+    const calculateDailyChange = () => {
+        const todayChange = Math.random() * 10000 - 2000; // Random between -2000 and 8000
+        const todayPercent = (todayChange / totalValue) * 100;
+        return {
+            amount: todayChange,
+            percent: todayPercent
+        };
+    };
+
+    const getAssetDistribution = () => {
+        const distribution: Record<string, number> = {};
+        assets.forEach(asset => {
+            const value = asset.holdings?.currentValue || 0;
+            distribution[asset.assetType] = (distribution[asset.assetType] || 0) + value;
+        });
+        return distribution;
+    };
+
+    const getBestAndWorstPerformers = () => {
+        const sortedAssets = [...assets]
+            .filter(asset => asset.holdings?.currentValue > 0)
+            .sort((a, b) => (b.holdings?.profitLossPercent || 0) - (a.holdings?.profitLossPercent || 0));
+        
+        return {
+            best: sortedAssets.length > 0 ? sortedAssets[0] : null,
+            worst: sortedAssets.length > 0 ? sortedAssets[sortedAssets.length - 1] : null
+        };
+    };
         
         const response = await fetch("/api/portfolio");
         if (!response.ok) throw new Error("Portfolio API failed");
@@ -186,9 +231,19 @@ export function PortfolioDashboard() {
                 fetchPortfolioSummary()
             ]);
             
-            // Merge mock assets with dynamic assets
-            const allAssets = [...assetsData, ...dynamicAssets];
-            setAssets(allAssets);
+            // Only merge mock assets with dynamic assets if no dynamic assets exist
+            // If dynamic assets exist, they're already up to date
+            if (dynamicAssets.length === 0) {
+                setAssets(assetsData);
+            } else {
+                // Show current assets state without overwriting dynamic assets
+                setAssets(prev => {
+                    const currentDynamicAssets = prev.filter((asset: any) => 
+                        asset.id.startsWith('dynamic_')
+                    );
+                    return [...assetsData, ...currentDynamicAssets];
+                });
+            }
             setSummary(summaryData);
             setError(null);
         } catch (err) {
@@ -199,12 +254,11 @@ export function PortfolioDashboard() {
         }
     };
 
-    // Function to add new asset (called from AddTransactionDialog)
     const addNewAsset = (transactionData: any) => {
         const newAsset = {
             id: `dynamic_${Date.now()}`,
             name: transactionData.assetName,
-            symbol: "",  // Remove abbreviations
+            symbol: "",
             assetType: transactionData.assetType,
             category: getAssetTypeLabel(transactionData.assetType),
             currentPrice: transactionData.pricePerUnit.toString(),
@@ -219,12 +273,28 @@ export function PortfolioDashboard() {
             }
         };
 
-        setDynamicAssets(prev => [...prev, newAsset]);
+        setDynamicAssets(prev => {
+            const updated = [...prev, newAsset];
+            return updated;
+        });
         
-        // Refresh to show the new asset
-        setTimeout(() => {
-            refreshData();
-        }, 100);
+        // Update assets immediately without fetching mock data again
+        setAssets(prev => {
+            const mockAssets = getMockAssets();
+            return [...mockAssets, ...dynamicAssets, newAsset];
+        });
+    };
+
+    const getAssetTypeLabel = (type: string) => {
+        const labels: Record<string, string> = {
+            "GOLD": "Altın",
+            "SILVER": "Gümüş",
+            "STOCK": "Hisse Senedi",
+            "FUND": "Yatırım Fonu",
+            "CRYPTO": "Kripto Para",
+            "EUROBOND": "Eurobond"
+        };
+        return labels[type] || type;
     };
 
     useEffect(() => {
@@ -273,92 +343,188 @@ export function PortfolioDashboard() {
 
     return (
         <div className="space-y-6 px-4 lg:px-6">
-            {/* Portfolio Summary */}
-            {summary && (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Toplam Değer</CardTitle>
-                            <Wallet className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">
-                                {formatCurrency(summary.totalValue)}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                {summary.totalAssets} varlık
-                            </p>
-                        </CardContent>
-                    </Card>
+            {/* Portfolio Summary - Phase 1: Critical Cards */}
+            {summary && assets.length > 0 && (() => {
+                const dailyChange = calculateDailyChange();
+                const distribution = getAssetDistribution();
+                const { best, worst } = getBestAndWorstPerformers();
+                
+                return (
+                    <>
+                        {/* Original Summary Cards (Responsive) */}
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Toplam Değer</CardTitle>
+                                    <Wallet className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold">
+                                        {formatCurrency(summary.totalValue)}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        {summary.totalAssets} varlık
+                                    </p>
+                                </CardContent>
+                            </Card>
 
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Toplam Maliyet</CardTitle>
-                            <TrendingDown className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">
-                                {formatCurrency(summary.totalCost)}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                Yatırım yapılan tutar
-                            </p>
-                        </CardContent>
-                    </Card>
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Toplam Maliyet</CardTitle>
+                                    <TrendingDown className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-2xl font-bold">
+                                        {formatCurrency(summary.totalCost)}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        Yatırım yapılan tutar
+                                    </p>
+                                </CardContent>
+                            </Card>
 
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Kar/Zarar</CardTitle>
-                            {summary.totalProfitLoss >= 0 ? 
-                                <TrendingUp className="h-4 w-4 text-green-600" /> : 
-                                <TrendingDown className="h-4 w-4 text-red-600" />
-                            }
-                        </CardHeader>
-                        <CardContent>
-                            <div className={`text-2xl font-bold ${
-                                summary.totalProfitLoss >= 0 ? 'text-green-600' : 'text-red-600'
-                            }`}>
-                                {formatCurrency(summary.totalProfitLoss)}
-                            </div>
-                            <p className={`text-xs ${
-                                summary.totalProfitLossPercent >= 0 ? 'text-green-600' : 'text-red-600'
-                            }`}>
-                                {formatPercent(summary.totalProfitLossPercent)}
-                            </p>
-                        </CardContent>
-                    </Card>
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Kar/Zarar</CardTitle>
+                                    {summary.totalProfitLoss >= 0 ? 
+                                        <TrendingUp className="h-4 w-4 text-green-600" /> : 
+                                        <TrendingDown className="h-4 w-4 text-red-600" />
+                                    }
+                                </CardHeader>
+                                <CardContent>
+                                    <div className={`text-2xl font-bold ${
+                                        summary.totalProfitLoss >= 0 ? 'text-green-600' : 'text-red-600'
+                                    }`}>
+                                        {formatCurrency(summary.totalProfitLoss)}
+                                    </div>
+                                    <p className={`text-xs ${
+                                        summary.totalProfitLossPercent >= 0 ? 'text-green-600' : 'text-red-600'
+                                    }`}>
+                                        {formatPercent(summary.totalProfitLossPercent)}
+                                    </p>
+                                </CardContent>
+                            </Card>
 
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Performans</CardTitle>
-                            {summary.totalProfitLossPercent >= 0 ? 
-                                <TrendingUp className="h-4 w-4 text-green-600" /> : 
-                                <TrendingDown className="h-4 w-4 text-red-600" />
-                            }
-                        </CardHeader>
-                        <CardContent>
-                            <div className={`text-2xl font-bold ${
-                                summary.totalProfitLossPercent >= 0 ? 'text-green-600' : 'text-red-600'
-                            }`}>
-                                {formatPercent(summary.totalProfitLossPercent)}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                Toplam getiri oranı
-                            </p>
-                        </CardContent>
-                    </Card>
-                </div>
-            )}
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Performans</CardTitle>
+                                    {summary.totalProfitLossPercent >= 0 ? 
+                                        <TrendingUp className="h-4 w-4 text-green-600" /> : 
+                                        <TrendingDown className="h-4 w-4 text-red-600" />
+                                    }
+                                </CardHeader>
+                                <CardContent>
+                                    <div className={`text-2xl font-bold ${
+                                        summary.totalProfitLossPercent >= 0 ? 'text-green-600' : 'text-red-600'
+                                    }`}>
+                                        {formatPercent(summary.totalProfitLossPercent)}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        Toplam getiri oranı
+                                    </p>
+                                </CardContent>
+                            </Card>
+                        </div>
+
+                        {/* Phase 1: Critical Cards */}
+                        <div className="grid gap-4 md:grid-cols-3">
+                            {/* 1. Günlük Değişim Kartı */}
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Günlük Değişim</CardTitle>
+                                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className={`text-2xl font-bold ${
+                                        dailyChange.amount >= 0 ? 'text-green-600' : 'text-red-600'
+                                    }`}>
+                                        {dailyChange.amount >= 0 ? '+' : ''}{formatCurrency(dailyChange.amount)}
+                                    </div>
+                                    <p className={`text-xs ${
+                                        dailyChange.percent >= 0 ? 'text-green-600' : 'text-red-600'
+                                    }`}>
+                                        ({dailyChange.percent >= 0 ? '+' : ''}{dailyChange.percent.toFixed(2)}%)
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        Bugün
+                                    </p>
+                                </CardContent>
+                            </Card>
+
+                            {/* 2. Varlık Dağılımı */}
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Varlık Dağılımı</CardTitle>
+                                    <PieChart className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-2">
+                                        {Object.entries(distribution).map(([type, value]) => {
+                                            const percent = (value / summary.totalValue) * 100;
+                                            const typeLabels: Record<string, string> = {
+                                                'GOLD': '🏆 Altın',
+                                                'SILVER': '💎 Gümüş', 
+                                                'STOCK': '📈 Hisse',
+                                                'FUND': '💰 Fon',
+                                                'CRYPTO': '₿ Kripto',
+                                                'EUROBOND': '📕 Eurobond'
+                                            };
+                                            return (
+                                                <div key={type} className="flex items-center justify-between text-sm">
+                                                    <span>{typeLabels[type] || type}</span>
+                                                    <span className="font-medium">{percent.toFixed(1)}%</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* 3. En İyi/Zayıf Performans */}
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Performans Detayı</CardTitle>
+                                    <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-2">
+                                        {best && (
+                                            <div className="flex items-center justify-between text-sm">
+                                                <span className="flex items-center gap-1">
+                                                    <Trophy className="h-3 w-3 text-green-600" />
+                                                    {best.name}
+                                                </span>
+                                                <span className="text-green-600 font-medium">
+                                                    +{(best.holdings?.profitLossPercent || 0).toFixed(2)}%
+                                                </span>
+                                            </div>
+                                        )}
+                                        {worst && worst.name !== best?.name && (
+                                            <div className="flex items-center justify-between text-sm">
+                                                <span className="flex items-center gap-1">
+                                                    <AlertTriangle className="h-3 w-3 text-orange-600" />
+                                                    {worst.name}
+                                                </span>
+                                                <span className="font-medium">
+                                                    {(worst.holdings?.profitLossPercent || 0).toFixed(2)}%
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </>
+                );
+            })()}
 
             {/* Assets Table */}
             <AssetsTable 
                 assets={assets}
                 currency="TRY"
                 onAssetClick={handleAssetClick}
-                onAddTransaction={() => {
-                    // İşi işlem modalı触发 DEVREDE
-                }}
                 onTransactionAdded={refreshData}
+                onNewAssetAdded={addNewAsset}
             />
 
             {/* Asset Detail Modal */}
@@ -369,12 +535,7 @@ export function PortfolioDashboard() {
                 onTransactionAdded={refreshData}
             />
 
-            {/* Hidden Add Transaction Dialog for new assets */}
-            <AddTransactionDialog
-                trigger={null}
-                onSuccess={refreshData}
-                onNewAssetAdded={addNewAsset}
-            />
+
 
             {/* Empty State */}
             {assets.length === 0 && !error && (

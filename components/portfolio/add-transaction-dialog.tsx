@@ -200,13 +200,31 @@ export function AddTransactionDialog({
             });
 
             if (!transactionResponse.ok) {
-                throw new Error("Transaction oluşturulurken hata oluştu");
+                const errorData = await transactionResponse.json();
+                throw new Error(errorData.error || "Transaction oluşturulurken hata oluştu");
             }
-            */
+
+            const transactionData = await transactionResponse.json();
+            
+            toast.success(`İşlem başarıyla eklendi!`, {
+                description: `${data.assetName} - ${data.transactionType === "BUY" ? "Alış" : "Satış"}: ${data.quantity} adet @ ₺${data.pricePerUnit}`,
+                action: {
+                    label: "Tamam",
+                    onClick: () => console.log("Toast dismissed"),
+                },
+            });
+            
+            // Başarılı
+            reset();
+            setIsOpen(false);
+            if (onSuccess) {
+                onSuccess();
+            }
         } catch (error) {
             console.error("Transaction ekleme hatası:", error);
+            const errorMessage = error instanceof Error ? error.message : "Bilinmeyen hata";
             toast.error("İşlem eklenirken hata oluştu", {
-                description: "Lütfen bilgileri kontrol edip tekrar deneyin.",
+                description: `Hata detayı: ${errorMessage}`,
                 action: {
                     label: "Tamam",
                     onClick: () => console.log("Error toast dismissed"),

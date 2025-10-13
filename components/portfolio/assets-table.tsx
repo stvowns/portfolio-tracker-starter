@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, TrendingDown, Eye, Plus } from "lucide-react";
 import { useState, useEffect } from "react";
+import { AddTransactionDialog } from "./add-transaction-dialog";
 
 interface AssetHolding {
     netQuantity: number;
@@ -41,6 +42,7 @@ interface AssetsTableProps {
     onAssetClick?: (asset: Asset) => void;
     onAddTransaction?: () => void;
     onTransactionAdded?: () => void;
+    onNewAssetAdded?: (transactionData: any) => void;
 }
 
 export function AssetsTable({ 
@@ -49,13 +51,20 @@ export function AssetsTable({
     currency = "TRY",
     onAssetClick,
     onAddTransaction,
-    onTransactionAdded
+    onTransactionAdded,
+    onNewAssetAdded
 }: AssetsTableProps) {
     const [isClient, setIsClient] = useState(false);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
 
     useEffect(() => {
         setIsClient(true);
     }, []);
+
+    const handleAddTransactionSuccess = () => {
+        setIsDialogOpen(false);
+        onTransactionAdded?.();
+    };
 
     const formatCurrency = (amount: number) => {
         if (!isClient) return `${amount.toFixed(2)} ${currency}`;
@@ -80,6 +89,18 @@ export function AssetsTable({
         return `${percent >= 0 ? "+" : ""}${percent.toFixed(2)}%`;
     };
 
+    const getAssetTypeLabel = (type: string) => {
+        const labels: Record<string, string> = {
+            "GOLD": "Altın",
+            "SILVER": "Gümüş",
+            "STOCK": "Hisse Senedi",
+            "FUND": "Yatırım Fonu",
+            "CRYPTO": "Kripto Para",
+            "EUROBOND": "Eurobond"
+        };
+        return labels[type] || type;
+    };
+
     const getAssetTypeColor = (assetType: string) => {
         switch (assetType) {
             case "GOLD":
@@ -97,18 +118,6 @@ export function AssetsTable({
             default:
                 return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300";
         }
-    };
-
-    const getAssetTypeLabel = (assetType: string) => {
-        const labels: Record<string, string> = {
-            "GOLD": "Altın",
-            "SILVER": "Gümüş",
-            "STOCK": "Hisse",
-            "FUND": "Fon",
-            "CRYPTO": "Kripto",
-            "EUROBOND": "Eurobond"
-        };
-        return labels[assetType] || assetType;
     };
 
     if (isLoading) {
@@ -146,12 +155,18 @@ export function AssetsTable({
                         <p className="text-muted-foreground mb-4">
                             Henüz hiç varlığınız yok. İlk işleminizi ekleyerek başlayın.
                         </p>
-                        {onAddTransaction && (
-                            <Button onClick={onAddTransaction} className="gap-2">
-                                <Plus className="h-4 w-4" />
-                                İlk İşlemi Ekle
-                            </Button>
-                        )}
+                        <AddTransactionDialog
+                            trigger={
+                                <Button className="gap-2">
+                                    <Plus className="h-4 w-4" />
+                                    İlk İşlemi Ekle
+                                </Button>
+                            }
+                            onSuccess={handleAddTransactionSuccess}
+                            open={isDialogOpen}
+                            onOpenChange={setIsDialogOpen}
+                            onNewAssetAdded={onNewAssetAdded}
+                        />
                     </div>
                 </CardContent>
             </Card>
@@ -167,12 +182,6 @@ export function AssetsTable({
                         {assets.length} varlık • Toplam {assets.reduce((sum, asset) => sum + asset.holdings.totalTransactions, 0)} işlem
                     </CardDescription>
                 </div>
-                {onAddTransaction && (
-                    <Button onClick={onAddTransaction} size="sm" className="gap-2">
-                        <Plus className="h-4 w-4" />
-                        Yeni İşlem
-                    </Button>
-                )}
             </CardHeader>
             <CardContent>
                 <div className="rounded-md border">
