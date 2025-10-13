@@ -8,6 +8,7 @@
 - 4 temel özet kartı (Toplam Değer, Maliyet, Kar/Zarar, Performans)
 - Tek sayfalık minimal tasarım
 - Sadece sayısal bilgi sunumu
+- Tekrarlayan yapılar olmamalı
 
 #### ✅ **Yapılan İyileştirmeler**
 - **📅 Günlük Değişim Kartı**

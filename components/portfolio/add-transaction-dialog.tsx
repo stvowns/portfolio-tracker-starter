@@ -133,37 +133,6 @@ export function AddTransactionDialog({
     const onSubmit = async (data: TransactionFormData) => {
         setIsLoading(true);
         try {
-            // Mock success for now - until authentication is fixed
-            console.log("Mock transaction data:", data);
-            
-            // Simulate API delay
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            // Simulate success
-            toast.success(`İşlem başarıyla eklendi!`, {
-                description: `${data.assetName} - ${data.transactionType === "BUY" ? "Alış" : "Satış"}: ${data.quantity} adet @ ₺${data.pricePerUnit}`,
-                action: {
-                    label: "Tamam",
-                    onClick: () => console.log("Toast dismissed"),
-                },
-            });
-            
-            // Add new asset to dashboard if it's a new asset
-            if (onNewAssetAdded && data.transactionType === "BUY") {
-                onNewAssetAdded(data);
-            }
-            
-            // Başarılı
-            reset();
-            setIsOpen(false);
-            if (onSuccess) {
-                onSuccess();
-            }
-            
-            return;
-            
-            // Original API code (commented out until auth is fixed)
-            /*
             // İlk önce asset'i oluştur veya bul
             const assetResponse = await fetch("/api/portfolio/assets", {
                 method: "POST",
@@ -177,7 +146,8 @@ export function AddTransactionDialog({
             });
 
             if (!assetResponse.ok) {
-                throw new Error("Asset oluşturulurken hata oluştu");
+                const errorData = await assetResponse.json();
+                throw new Error(errorData.error || "Asset oluşturulurken hata oluştu");
             }
 
             const assetData = await assetResponse.json();

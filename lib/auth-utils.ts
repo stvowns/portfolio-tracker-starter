@@ -2,11 +2,24 @@ import { auth } from "./auth";
 import { headers } from "next/headers";
 import { NextRequest } from "next/server";
 
+// DEVELOPMENT MODE FLAG
+const IS_DEV = process.env.NODE_ENV === 'development';
+
 /**
  * Server side'da kullanmak için session helper'ı
  * API route'larda kullanıcı doğrulaması için kullanılır
  */
 export async function getServerSession(request?: NextRequest) {
+    if (IS_DEV) {
+        // Development mode için mock session
+        return {
+            user: {
+                id: "dev-user-id",
+                email: "dev@example.com"
+            }
+        };
+    }
+    
     try {
         const session = await auth.api.getSession({
             headers: request ? request.headers : await headers()
@@ -21,9 +34,20 @@ export async function getServerSession(request?: NextRequest) {
 
 /**
  * API route'larda kullanıcı kimlik doğrulaması yapar
- * Geçersiz session durumunda 401 hatası döner
+ * Geliştirme modunda devre dışı, production modunda aktif
  */
 export async function requireAuth(request: NextRequest) {
+    if (IS_DEV) {
+        // Development mode için mock user
+        return {
+            user: {
+                id: "dev-user-id",
+                email: "dev@example.com"
+            }
+        };
+    }
+    
+    // Production authentication
     const session = await getServerSession(request);
     
     if (!session || !session.user) {

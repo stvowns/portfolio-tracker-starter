@@ -1,8 +1,7 @@
 import { NextRequest } from "next/server";
 import { db, portfolios, assets, transactions } from "@/db";
 import { requireAuth } from "@/lib/auth-utils";
-import { CreatePortfolioSchema } from "@/lib/validations/portfolio";
-import { eq, and, sum, count } from "drizzle-orm";
+import { eq, sum, count } from "drizzle-orm";
 
 /**
  * GET /api/portfolio
@@ -13,18 +12,18 @@ export async function GET(request: NextRequest) {
     if (session instanceof Response) return session;
     
     try {
-        // Kullanıcının portfolyo'larını al
+        // Kullanıcının portfolyo'larını al (şema uyumsuzluğuna dikkat)
         const userPortfolios = await db
             .select()
             .from(portfolios)
-            .where(eq(portfolios.userId, session.user.id))
-            .orderBy(portfolios.createdAt);
+            .where(eq(portfolios.userId, session.user.id));
 
         // Eğer hiç portfolyo yoksa, varsayılan bir tane oluştur
         if (userPortfolios.length === 0) {
             const defaultPortfolio = await db
                 .insert(portfolios)
                 .values({
+                    id: `portfolio_${Date.now()}_${Math.random()}`,
                     userId: session.user.id,
                     name: "Ana Portföy",
                     baseCurrency: "TRY"
@@ -34,122 +33,56 @@ export async function GET(request: NextRequest) {
             userPortfolios.push(defaultPortfolio[0]);
         }
 
-        // Genel portföy istatistikleri hesapla
-        const portfolioSummaries = await Promise.all(
-            userPortfolios.map(async (portfolio) => {
-                // Portfolio'daki asset sayısı
-                const assetCount = await db
-                    .select({ count: assets.id })
-                    .from(assets)
-                    .where(and(
-                        eq(assets.userId, session.user.id),
-                        eq(assets.portfolioId, portfolio.id)
-                    ));
-
-                // Portfolio'daki toplam transaction sayısı
-                const transactionCount = await db
-                    .select({ count: transactions.id })
-                    .from(transactions)
-                    .innerJoin(assets, eq(transactions.assetId, assets.id))
-                    .where(and(
-                        eq(transactions.userId, session.user.id),
-                        eq(assets.portfolioId, portfolio.id)
-                    ));
-
-                // Portfolio'daki toplam yatırım miktarı (buy transactions)
-                const totalInvestment = await db
-                    .select({ 
-                        total: sum(transactions.totalAmount).mapWith(Number)
-                    })
-                    .from(transactions)
-                    .innerJoin(assets, eq(transactions.assetId, assets.id))
-                    .where(and(
-                        eq(transactions.userId, session.user.id),
-                        eq(assets.portfolioId, portfolio.id),
-                        eq(transactions.transactionType, "BUY")
-                    ));
-
-                // Son işlem tarihi
-                const lastTransaction = await db
-                    .select({ date: transactions.transactionDate })
-                    .from(transactions)
-                    .innerJoin(assets, eq(transactions.assetId, assets.id))
-                    .where(and(
-                        eq(transactions.userId, session.user.id),
-                        eq(assets.portfolioId, portfolio.id)
-                    ))
-                    .orderBy(transactions.transactionDate)
-                    .limit(1);
-
-                return {
-                    id: portfolio.id,
-                    name: portfolio.name,
-                    baseCurrency: portfolio.baseCurrency,
-                    createdAt: portfolio.createdAt,
-                    stats: {
-                        totalAssets: assetCount[0]?.count || 0,
-                        totalTransactions: transactionCount[0]?.count || 0,
-                        totalInvestment: totalInvestment[0]?.total || 0,
-                        lastTransactionDate: lastTransaction[0]?.date || null
-                    }
-                };
-            })
-        );
-
-        // Genel kullanıcı istatistikleri
-        const totalAssetsAllPortfolios = await db
-            .select({ count: assets.id })
-            .from(assets)
-            .where(eq(assets.userId, session.user.id));
-
-        const totalTransactionsAllPortfolios = await db
-            .select({ count: transactions.id })
-            .from(transactions)
-            .where(eq(transactions.userId, session.user.id));
-
-        const totalInvestmentAllPortfolios = await db
-            .select({ 
-                total: sum(transactions.totalAmount).mapWith(Number)
-            })
-            .from(transactions)
-            .where(and(
-                eq(transactions.userId, session.user.id),
-                eq(transactions.transactionType, "BUY")
-            ));
-
-        // Asset türü dağılımı
-        const assetTypeDistribution = await db
+        // Kullanıcının varlıklarını ve işlem özetini al
+        const assetSummary = await db
             .select({
+                assetId: assets.id,
+                assetName: assets.name,
                 assetType: assets.assetType,
-                count: count(assets.id).mapWith(Number)
+                totalQuantity: sum(transactions.quantity).mapWith(Number),
+                totalAmount: sum(transactions.totalAmount).mapWith(Number),
+                transactionCount: count(transactions.id).mapWith(Number),
             })
             .from(assets)
+            .leftJoin(transactions, eq(transactions.assetId, assets.id))
             .where(eq(assets.userId, session.user.id))
-            .groupBy(assets.assetType);
+            .groupBy(assets.id, assets.name, assets.assetType);
+
+        // Portföy özetini hesapla
+        const totalValue = 0; // Şimdilik 0, sonradan gerçek fiyatlarla hesaplanır
+        const totalCost = assetSummary.reduce((sum, asset) => sum + (asset.totalAmount || 0), 0);
+        const totalAssets = assetSummary.length;
 
         return Response.json({
             success: true,
             data: {
-                user: {
-                    id: session.user.id,
-                    name: session.user.name,
-                    email: session.user.email
-                },
-                portfolios: portfolioSummaries,
-                overview: {
-                    totalPortfolios: portfolioSummaries.length,
-                    totalAssets: totalAssetsAllPortfolios[0]?.count || 0,
-                    totalTransactions: totalTransactionsAllPortfolios[0]?.count || 0,
-                    totalInvestment: totalInvestmentAllPortfolios[0]?.total || 0,
-                    assetTypeDistribution: assetTypeDistribution
-                }
+                totalValue,
+                totalCost,
+                totalProfitLoss: totalValue - totalCost,
+                totalProfitLossPercent: totalCost > 0 ? ((totalValue - totalCost) / totalCost) * 100 : 0,
+                totalAssets,
+                currency: "TRY",
+                assets: assetSummary.map(asset => ({
+                    id: asset.assetId,
+                    name: asset.assetName,
+                    assetType: asset.assetType,
+                    holdings: {
+                        netQuantity: asset.totalQuantity || 0,
+                        netAmount: asset.totalAmount || 0,
+                        averagePrice: asset.totalQuantity && asset.totalQuantity > 0 ? (asset.totalAmount || 0) / asset.totalQuantity : 0,
+                        currentValue: 0, // Şimdilik 0
+                        profitLoss: 0,
+                        profitLossPercent: 0,
+                        totalTransactions: asset.transactionCount || 0
+                    }
+                }))
             }
         });
 
     } catch (error) {
         console.error("Portfolio özeti alma hatası:", error);
         return Response.json(
-            { success: false, error: "Portföy özeti alınırken hata oluştu" },
+            { success: false, error: "Portföy özeti alınırken hata oluştu: " + error.message },
             { status: 500 }
         );
     }
@@ -166,16 +99,24 @@ export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
         
-        // Validation
-        const validatedData = CreatePortfolioSchema.parse(body);
+        // Validation basit - geliştirme için
+        const { name, baseCurrency = "TRY" } = body;
+        
+        if (!name) {
+            return Response.json(
+                { success: false, error: "Portföy adı gereklidir" },
+                { status: 400 }
+            );
+        }
         
         // Portföy'ü veritabanına ekle
         const newPortfolio = await db
             .insert(portfolios)
             .values({
+                id: `portfolio_${Date.now()}_${Math.random()}`,
                 userId: session.user.id,
-                name: validatedData.name,
-                baseCurrency: validatedData.baseCurrency,
+                name: name,
+                baseCurrency: baseCurrency,
             })
             .returning();
 
@@ -188,15 +129,8 @@ export async function POST(request: NextRequest) {
     } catch (error) {
         console.error("Portföy oluşturma hatası:", error);
         
-        if (error instanceof Error && error.name === "ZodError") {
-            return Response.json(
-                { success: false, error: "Geçersiz veri formatı", details: error.message },
-                { status: 400 }
-            );
-        }
-        
         return Response.json(
-            { success: false, error: "Portföy oluşturulurken hata oluştu" },
+            { success: false, error: "Portföy oluşturulurken hata oluştu: " + error.message },
             { status: 500 }
         );
     }

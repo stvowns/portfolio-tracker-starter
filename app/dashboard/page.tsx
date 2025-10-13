@@ -1,6 +1,9 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Bot, MessageSquare } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { AddTransactionDialog } from "@/components/portfolio/add-transaction-dialog";
 import { PortfolioDashboard } from "./portfolio-dashboard";
 
@@ -16,7 +19,7 @@ export default function Page() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <AddTransactionDialog />
+            <AddTransactionDialogDialogWithData />
             <Link href="/chat">
               <Button variant="outline" size="lg" className="gap-2">
                 <Bot className="h-5 w-5" />
@@ -31,4 +34,21 @@ export default function Page() {
       </div>
     </div>
   )
+}
+
+// Wrapper component with refresh functionality
+function AddTransactionDialogDialogWithData() {
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleSuccess = () => {
+    // Force re-render of PortfolioDashboard by updating the key
+    setRefreshKey(prev => prev + 1);
+  };
+
+  return (
+    <>
+      <AddTransactionDialog onSuccess={handleSuccess} />
+      <PortfolioDashboard key={refreshKey} />
+    </>
+  );
 }
