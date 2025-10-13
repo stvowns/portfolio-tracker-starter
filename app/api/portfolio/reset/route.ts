@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db, assets, transactions } from "@/db";
 import { requireAuth } from "@/lib/auth-utils";
 import { eq } from "drizzle-orm";
@@ -25,7 +25,7 @@ export async function DELETE(request: NextRequest) {
             .where(eq(assets.userId, session.user.id))
             .returning();
 
-        return Response.json({
+        return NextResponse.json({
             success: true,
             message: "Tüm varlıklar ve işlemler başarıyla silindi",
             data: {
@@ -38,7 +38,7 @@ export async function DELETE(request: NextRequest) {
         console.error("Portfolio reset hatası:", error);
         
         const errorMessage = error instanceof Error ? error.message : "Bilinmeyen hata";
-        return Response.json(
+        return NextResponse.json(
             { success: false, error: "Sıfırlama sırasında hata oluştu", details: errorMessage },
             { status: 500 }
         );
