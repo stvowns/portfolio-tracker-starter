@@ -14,7 +14,7 @@ function getMockAssets() {
         {
             id: "1",
             name: "Çeyrek Altın",
-            symbol: "CA",
+            symbol: "",
             assetType: "GOLD",
             category: "Kıymetli Maden",
             currentPrice: "2850.00",
@@ -31,7 +31,7 @@ function getMockAssets() {
         {
             id: "2", 
             name: "Gram Altın",
-            symbol: "GA",
+            symbol: "",
             assetType: "GOLD",
             category: "Kıymetli Maden",
             currentPrice: "1850.00",
@@ -48,7 +48,7 @@ function getMockAssets() {
         {
             id: "3", 
             name: "Cumhuriyet Altını",
-            symbol: "CUM",
+            symbol: "",
             assetType: "GOLD",
             category: "Kıymetli Maden",
             currentPrice: "18500.00",
@@ -65,7 +65,7 @@ function getMockAssets() {
         {
             id: "4", 
             name: "BIST 100",
-            symbol: "XU100",
+            symbol: "",
             assetType: "FUND",
             category: "Yatırım Fonu",
             currentPrice: "125.50",
@@ -82,7 +82,7 @@ function getMockAssets() {
         {
             id: "5", 
             name: "USD/TRY",
-            symbol: "USD",
+            symbol: "",
             assetType: "EUROBOND",
             category: "Döviz",
             currentPrice: "32.50",
@@ -174,6 +174,9 @@ export function PortfolioDashboard() {
     const [selectedAsset, setSelectedAsset] = useState<any>(null);
     const [isAssetDetailOpen, setIsAssetDetailOpen] = useState(false);
 
+    // Mock storage for新增的资产
+    const [dynamicAssets, setDynamicAssets] = useState<any[]>([]);
+
     const refreshData = async () => {
         setLoading(true);
         try {
@@ -182,7 +185,9 @@ export function PortfolioDashboard() {
                 fetchPortfolioSummary()
             ]);
             
-            setAssets(assetsData);
+            // Merge mock assets with dynamic assets
+            const allAssets = [...assetsData, ...dynamicAssets];
+            setAssets(allAssets);
             setSummary(summaryData);
             setError(null);
         } catch (err) {
@@ -191,6 +196,34 @@ export function PortfolioDashboard() {
         } finally {
             setLoading(false);
         }
+    };
+
+    // Function to add new asset (called from AddTransactionDialog)
+    const addNewAsset = (transactionData: any) => {
+        const newAsset = {
+            id: `dynamic_${Date.now()}`,
+            name: transactionData.assetName,
+            symbol: "",  // Remove abbreviations
+            assetType: transactionData.assetType,
+            category: getAssetTypeLabel(transactionData.assetType),
+            currentPrice: transactionData.pricePerUnit.toString(),
+            holdings: {
+                netQuantity: transactionData.quantity,
+                netAmount: transactionData.quantity * transactionData.pricePerUnit,
+                averagePrice: transactionData.pricePerUnit,
+                currentValue: transactionData.quantity * transactionData.pricePerUnit,
+                profitLoss: 0,
+                profitLossPercent: 0,
+                totalTransactions: 1
+            }
+        };
+
+        setDynamicAssets(prev => [...prev, newAsset]);
+        
+        // Refresh to show the new asset
+        setTimeout(() => {
+            refreshData();
+        }, 100);
     };
 
     useEffect(() => {
@@ -333,6 +366,13 @@ export function PortfolioDashboard() {
                 isOpen={isAssetDetailOpen}
                 onClose={() => setIsAssetDetailOpen(false)}
                 onTransactionAdded={refreshData}
+            />
+
+            {/* Hidden Add Transaction Dialog for new assets */}
+            <AddTransactionDialog
+                trigger={null}
+                onSuccess={refreshData}
+                onNewAssetAdded={addNewAsset}
             />
 
             {/* Empty State */}

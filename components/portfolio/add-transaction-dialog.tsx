@@ -44,6 +44,7 @@ type TransactionFormData = z.infer<typeof transactionSchema>;
 interface AddTransactionDialogProps {
     trigger?: React.ReactNode;
     onSuccess?: () => void;
+    onNewAssetAdded?: (transactionData: any) => void;
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
     defaultValues?: {
@@ -56,6 +57,7 @@ interface AddTransactionDialogProps {
 export function AddTransactionDialog({ 
     trigger, 
     onSuccess, 
+    onNewAssetAdded,
     open: controlledOpen,
     onOpenChange,
     defaultValues 
@@ -145,6 +147,11 @@ export function AddTransactionDialog({
                     onClick: () => console.log("Toast dismissed"),
                 },
             });
+            
+            // Add new asset to dashboard if it's a new asset
+            if (onNewAssetAdded && data.transactionType === "BUY") {
+                onNewAssetAdded(data);
+            }
             
             // Başarılı
             reset();

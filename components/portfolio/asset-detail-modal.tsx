@@ -77,7 +77,7 @@ export function AssetDetailModal({ asset, isOpen, onClose, onTransactionAdded }:
                     id: "tx1",
                     assetId: asset.id,
                     assetName: asset.name,
-                    assetSymbol: asset.symbol,
+                    assetSymbol: "",
                     assetType: asset.assetType,
                     transactionType: "BUY",
                     quantity: 1,
@@ -90,7 +90,7 @@ export function AssetDetailModal({ asset, isOpen, onClose, onTransactionAdded }:
                     id: "tx2", 
                     assetId: asset.id,
                     assetName: asset.name,
-                    assetSymbol: asset.symbol,
+                    assetSymbol: "",
                     assetType: asset.assetType,
                     transactionType: "BUY",
                     quantity: 2,
@@ -132,14 +132,36 @@ export function AssetDetailModal({ asset, isOpen, onClose, onTransactionAdded }:
         }
     };
 
+    // Function to add new transaction to the list
+    const addTransactionToList = (transactionData: any) => {
+        const newTransaction = {
+            id: `tx_new_${Date.now()}`,
+            assetId: asset.id,
+            assetName: asset.name,
+            assetSymbol: "",
+            assetType: asset.assetType,
+            transactionType: transactionData.transactionType,
+            quantity: transactionData.quantity,
+            pricePerUnit: transactionData.pricePerUnit,
+            totalAmount: transactionData.quantity * transactionData.pricePerUnit,
+            transactionDate: new Date().toISOString(),
+            notes: transactionData.notes || "Modal'dan eklendi"
+        };
+        
+        setTransactions(prev => [newTransaction, ...prev]);
+    };
+
     useEffect(() => {
         if (isOpen && asset?.id) {
             fetchTransactions();
         }
     }, [isOpen, asset?.id]);
 
-    const handleTransactionAdded = () => {
-        fetchTransactions();
+    const handleTransactionAdded = (transactionData?: any) => {
+        if (transactionData) {
+            addTransactionToList(transactionData);
+        }
+        
         if (onTransactionAdded) {
             onTransactionAdded();
         }
@@ -336,16 +358,9 @@ export function AssetDetailModal({ asset, isOpen, onClose, onTransactionAdded }:
                                 <CardContent className="flex flex-col items-center justify-center py-12">
                                     <Wallet className="h-12 w-12 text-muted-foreground mb-4" />
                                     <CardTitle className="text-xl mb-2">Henüz işlem yok</CardTitle>
-                                    <CardDescription className="text-center mb-4">
+                                    <CardDescription className="text-center">
                                         Bu varlık için henüz alım veya satım işlemi yapılmamış
                                     </CardDescription>
-                                    <Button 
-                                        onClick={() => setIsAddTransactionOpen(true)}
-                                        variant="outline"
-                                    >
-                                        <Plus className="h-4 w-4 mr-2" />
-                                        İlk İşlemi Ekle
-                                    </Button>
                                 </CardContent>
                             </Card>
                         )}
@@ -355,7 +370,7 @@ export function AssetDetailModal({ asset, isOpen, onClose, onTransactionAdded }:
                 {/* Add Transaction Dialog */}
                 <AddTransactionDialog
                     trigger={null}
-                    onSuccess={handleTransactionAdded}
+                    onSuccess={(data) => handleTransactionAdded(data)}
                     open={isAddTransactionOpen}
                     onOpenChange={setIsAddTransactionOpen}
                     defaultValues={{
