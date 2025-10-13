@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -43,7 +43,7 @@ type TransactionFormData = z.infer<typeof transactionSchema>;
 
 interface AddTransactionDialogProps {
     trigger?: React.ReactNode;
-    onSuccess?: () => void;
+    onSuccess?: (data?: { transactionType: "BUY" | "SELL"; quantity: number; pricePerUnit: number; notes?: string }) => void;
     onNewAssetAdded?: (transactionData: any) => void;
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
@@ -51,6 +51,8 @@ interface AddTransactionDialogProps {
         assetType?: string;
         assetName?: string;
         transactionType?: "BUY" | "SELL";
+        pricePerUnit?: number;
+        quantity?: number;
     };
 }
 
@@ -78,7 +80,7 @@ export function AddTransactionDialog({
     } = useForm<TransactionFormData>({
         resolver: zodResolver(transactionSchema),
         defaultValues: {
-            assetType: defaultValues?.assetType || "",
+            assetType: (defaultValues?.assetType as any) || undefined,
             assetName: defaultValues?.assetName || "",
             transactionType: defaultValues?.transactionType || "BUY",
             transactionDate: new Date().toISOString().split("T")[0],
@@ -87,6 +89,24 @@ export function AddTransactionDialog({
 
     const assetType = watch("assetType");
     const transactionType = watch("transactionType");
+
+    useEffect(() => {
+        if (defaultValues && isOpen) {
+            if (defaultValues.assetType) setValue("assetType", defaultValues.assetType as any);
+            if (defaultValues.assetName) setValue("assetName", defaultValues.assetName);
+            if (defaultValues.transactionType) setValue("transactionType", defaultValues.transactionType);
+            if (defaultValues.pricePerUnit) setValue("pricePerUnit", defaultValues.pricePerUnit);
+            if (defaultValues.quantity) setValue("quantity", defaultValues.quantity);
+        }
+    }, [defaultValues, isOpen, setValue]);
+
+    const getAssetNamePlaceholder = (type: string) => {
+        switch (type) {
+            case "GOLD": return "Altın çeşidini seçin";
+            case "SILVER": return "Gümüş çeşidini seçin";
+            default: return "Varlık seçin";
+        }
+    };
 
     // Altın çeşitleri ve diğer varlık türleri için seçenekler
     const getAssetOptions = (type: string) => {
@@ -131,6 +151,17 @@ export function AddTransactionDialog({
     };
 
     const onSubmit = async (data: TransactionFormData) => {
+        // Validation kontrolü
+        if (!data.assetType) {
+            toast.error("Varlık türü seçmelisiniz");
+            return;
+        }
+        
+        if (!data.assetName) {
+            toast.error("Varlık adı girmelisiniz");
+            return;
+        }
+        
         setIsLoading(true);
         try {
             // İlk önce asset'i oluştur veya bul
@@ -147,7 +178,10 @@ export function AddTransactionDialog({
 
             if (!assetResponse.ok) {
                 const errorData = await assetResponse.json();
-                throw new Error(errorData.error || "Asset oluşturulurken hata oluştu");
+                const errorMsg = errorData.details 
+                    ? `${errorData.error}: ${errorData.details}` 
+                    : errorData.error || "Asset oluşturulurken hata oluştu";
+                throw new Error(errorMsg);
             }
 
             const assetData = await assetResponse.json();
@@ -184,17 +218,31 @@ export function AddTransactionDialog({
                 },
             });
             
-            // Başarılı
+            // Başarılı - transaction data'yı callback'e gönder
+            const callbackData = {
+                transactionType: data.transactionType,
+                quantity: data.quantity,
+                pricePerUnit: data.pricePerUnit,
+                notes: data.notes
+            };
+            
             reset();
             setIsOpen(false);
             if (onSuccess) {
-                onSuccess();
+                onSuccess(callbackData);
             }
         } catch (error) {
             console.error("Transaction ekleme hatası:", error);
             const errorMessage = error instanceof Error ? error.message : "Bilinmeyen hata";
+            
+            // Hata detaylarını daha iyi göster
+            let detailedError = errorMessage;
+            if (errorMessage.includes("Asset oluşturulurken hata oluştu")) {
+                detailedError = "Varlık oluşturulamadı. Lütfen varlık türü ve adını kontrol edin.";
+            }
+            
             toast.error("İşlem eklenirken hata oluştu", {
-                description: `Hata detayı: ${errorMessage}`,
+                description: detailedError,
                 action: {
                     label: "Tamam",
                     onClick: () => console.log("Error toast dismissed"),
@@ -216,9 +264,11 @@ export function AddTransactionDialog({
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild>
-                {trigger || defaultTrigger}
-            </DialogTrigger>
+            {trigger !== null && (
+                <DialogTrigger asChild>
+                    {trigger || defaultTrigger}
+                </DialogTrigger>
+            )}
             <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
                     <DialogTitle>Yeni İşlem Ekle</DialogTitle>
@@ -231,7 +281,13 @@ export function AddTransactionDialog({
                     {/* Asset Type Selection */}
                     <div className="space-y-2">
                         <Label htmlFor="assetType">Varlık Türü</Label>
-                        <Select onValueChange={(value) => setValue("assetType", value as any)}>
+                        <Select 
+                            onValueChange={(value) => {
+                                setValue("assetType", value as any);
+                                setValue("assetName", "");
+                            }}
+                            value={assetType}
+                        >
                             <SelectTrigger>
                                 <SelectValue placeholder="Varlık türünü seçin" />
                             </SelectTrigger>
@@ -253,9 +309,12 @@ export function AddTransactionDialog({
                     <div className="space-y-2">
                         <Label htmlFor="assetName">Varlık Adı</Label>
                         {assetOptions.length > 0 ? (
-                            <Select onValueChange={(value) => setValue("assetName", value)}>
+                            <Select 
+                                key={assetType}
+                                onValueChange={(value) => setValue("assetName", value)}
+                            >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Altın çeşidini seçin" />
+                                    <SelectValue placeholder={getAssetNamePlaceholder(assetType)} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {assetOptions.map((option) => (

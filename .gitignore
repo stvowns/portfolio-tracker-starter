@@ -40,3 +40,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# database files
+*.db
+*.db-shm
+*.db-wal
+
+# backup files
+*-backup.*
+*.backup
+
+# screenshots
+Screenshot*.png
+screenshot*.png

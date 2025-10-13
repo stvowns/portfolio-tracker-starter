@@ -11,7 +11,8 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, TrendingDown, Eye, Plus } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TrendingUp, TrendingDown, Eye, Plus, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { AddTransactionDialog } from "./add-transaction-dialog";
 
@@ -35,6 +36,14 @@ interface Asset {
     holdings: AssetHolding;
 }
 
+interface TransactionData {
+    assetType: string;
+    assetName: string;
+    transactionType: "BUY" | "SELL";
+    quantity: number;
+    pricePerUnit: number;
+}
+
 interface AssetsTableProps {
     assets: Asset[];
     isLoading?: boolean;
@@ -42,8 +51,33 @@ interface AssetsTableProps {
     onAssetClick?: (asset: Asset) => void;
     onAddTransaction?: () => void;
     onTransactionAdded?: () => void;
-    onNewAssetAdded?: (transactionData: any) => void;
+    onNewAssetAdded?: (transactionData: TransactionData) => void;
+    onAssetDeleted?: () => void;
 }
+
+// Kategori tanımları
+type AssetCategory = 
+    | "ALL"
+    | "GOLD"
+    | "SILVER"
+    | "STOCK_BIST"
+    | "STOCK_INTERNATIONAL"
+    | "ETF"
+    | "FUND"
+    | "CRYPTO"
+    | "EUROBOND";
+
+const CATEGORY_CONFIG = {
+    ALL: { label: "Tümü", icon: "📊", color: "default" },
+    GOLD: { label: "Altın", icon: "🪙", color: "yellow" },
+    SILVER: { label: "Gümüş", icon: "⚪", color: "gray" },
+    STOCK_BIST: { label: "BIST", icon: "🇹🇷", color: "blue" },
+    STOCK_INTERNATIONAL: { label: "Yabancı Hisse", icon: "🌍", color: "blue" },
+    ETF: { label: "ETF", icon: "📦", color: "purple" },
+    FUND: { label: "Yatırım Fonları", icon: "💰", color: "green" },
+    CRYPTO: { label: "Kripto", icon: "₿", color: "orange" },
+    EUROBOND: { label: "Eurobond", icon: "📕", color: "red" },
+} as const;
 
 export function AssetsTable({ 
     assets, 
@@ -52,10 +86,13 @@ export function AssetsTable({
     onAssetClick,
     onAddTransaction,
     onTransactionAdded,
-    onNewAssetAdded
+    onNewAssetAdded,
+    onAssetDeleted
 }: AssetsTableProps) {
     const [isClient, setIsClient] = useState(false);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [deletingAssetId, setDeletingAssetId] = useState<string | null>(null);
+    const [activeCategory, setActiveCategory] = useState<AssetCategory>("ALL");
 
     useEffect(() => {
         setIsClient(true);
@@ -66,7 +103,35 @@ export function AssetsTable({
         onTransactionAdded?.();
     };
 
-    const formatCurrency = (amount: number) => {
+    const handleDeleteAsset = async (assetId: string, assetName: string) => {
+        if (!confirm(`"${assetName}" varlığını ve tüm işlemlerini silmek istediğinizden emin misiniz?`)) {
+            return;
+        }
+
+        setDeletingAssetId(assetId);
+        try {
+            const response = await fetch(`/api/portfolio/assets/${assetId}`, {
+                method: 'DELETE',
+            });
+
+            if (response.ok) {
+                onAssetDeleted?.();
+            } else {
+                const result = await response.json();
+                alert(`Silme hatası: ${result.error || 'Bilinmeyen hata'}`);
+            }
+        } catch (error) {
+            console.error("Asset silme hatası:", error);
+            alert("Varlık silinirken bir hata oluştu.");
+        } finally {
+            setDeletingAssetId(null);
+        }
+    };
+
+    const formatCurrency = (amount: number | null | undefined) => {
+        if (amount === null || amount === undefined) {
+            return '₺0,00';
+        }
         if (!isClient) return `${amount.toFixed(2)} ${currency}`;
         
         return new Intl.NumberFormat("tr-TR", {
@@ -85,8 +150,82 @@ export function AssetsTable({
         }).format(num);
     };
 
-    const formatPercent = (percent: number) => {
+    const formatPercent = (percent: number | null | undefined) => {
+        if (percent === null || percent === undefined) {
+            return '-';
+        }
         return `${percent >= 0 ? "+" : ""}${percent.toFixed(2)}%`;
+    };
+
+    // Varlık kategorisini belirle
+    const getAssetCategory = (asset: Asset): AssetCategory[] => {
+        const categories: AssetCategory[] = ["ALL"];
+        
+        switch (asset.assetType) {
+            case "GOLD":
+                categories.push("GOLD");
+                break;
+            case "SILVER":
+                categories.push("SILVER");
+                break;
+            case "STOCK":
+                // ETF kontrolü
+                if (asset.category?.toUpperCase() === "ETF") {
+                    categories.push("ETF");
+                    break;
+                }
+                
+                // Hisse senedi için yerli/yabancı ayrımı
+                const isBIST = 
+                    asset.category?.toUpperCase() === "BIST" ||
+                    asset.symbol?.endsWith(".IS") ||
+                    asset.symbol?.endsWith(".E");
+                categories.push(isBIST ? "STOCK_BIST" : "STOCK_INTERNATIONAL");
+                break;
+            case "FUND":
+                // ETF kontrolü (fonlar da ETF olabilir)
+                if (asset.category?.toUpperCase() === "ETF") {
+                    categories.push("ETF");
+                } else {
+                    categories.push("FUND");
+                }
+                break;
+            case "CRYPTO":
+                categories.push("CRYPTO");
+                break;
+            case "EUROBOND":
+                categories.push("EUROBOND");
+                break;
+        }
+        
+        return categories;
+    };
+
+    // Aktif kategoriye göre varlıkları filtrele
+    const filterAssetsByCategory = (category: AssetCategory) => {
+        if (category === "ALL") return assets;
+        return assets.filter(asset => getAssetCategory(asset).includes(category));
+    };
+
+    // Kategoriye göre özet bilgiler
+    const getCategorySummary = (category: AssetCategory) => {
+        const categoryAssets = filterAssetsByCategory(category);
+        const totalValue = categoryAssets.reduce((sum, asset) => 
+            sum + (asset.holdings.currentValue ?? 0), 0
+        );
+        const totalCost = categoryAssets.reduce((sum, asset) => 
+            sum + asset.holdings.netAmount, 0
+        );
+        const profitLoss = totalValue - totalCost;
+        const profitLossPercent = totalCost > 0 ? (profitLoss / totalCost) * 100 : 0;
+        
+        return {
+            count: categoryAssets.length,
+            totalValue,
+            totalCost,
+            profitLoss,
+            profitLossPercent
+        };
     };
 
     const getAssetTypeLabel = (type: string) => {
@@ -173,17 +312,82 @@ export function AssetsTable({
         );
     }
 
+    const filteredAssets = filterAssetsByCategory(activeCategory);
+    const categorySummary = getCategorySummary(activeCategory);
+
     return (
         <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                <div>
-                    <CardTitle>Varlıklarım</CardTitle>
-                    <CardDescription>
-                        {assets.length} varlık • Toplam {assets.reduce((sum, asset) => sum + asset.holdings.totalTransactions, 0)} işlem
-                    </CardDescription>
+            <CardHeader>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <CardTitle>Varlıklarım</CardTitle>
+                        <CardDescription>
+                            {categorySummary.count} varlık • {formatCurrency(categorySummary.totalValue)}
+                            {categorySummary.profitLoss !== 0 && (
+                                <span className={categorySummary.profitLoss >= 0 ? "text-green-600" : "text-red-600"}>
+                                    {" • "}
+                                    {formatPercent(categorySummary.profitLossPercent)}
+                                </span>
+                            )}
+                        </CardDescription>
+                    </div>
+                    <AddTransactionDialog
+                        trigger={
+                            <Button size="sm" className="gap-2">
+                                <Plus className="h-4 w-4" />
+                                Yeni İşlem
+                            </Button>
+                        }
+                        onSuccess={handleAddTransactionSuccess}
+                        open={isDialogOpen}
+                        onOpenChange={setIsDialogOpen}
+                        onNewAssetAdded={onNewAssetAdded}
+                    />
                 </div>
             </CardHeader>
             <CardContent>
+                <Tabs value={activeCategory} onValueChange={(v) => setActiveCategory(v as AssetCategory)} className="w-full">
+                    <TabsList className="grid w-full grid-cols-3 lg:grid-cols-9 mb-4">
+                        {(Object.keys(CATEGORY_CONFIG) as AssetCategory[]).map((category) => {
+                            const summary = getCategorySummary(category);
+                            const config = CATEGORY_CONFIG[category];
+                            
+                            return (
+                                <TabsTrigger key={category} value={category} className="text-xs">
+                                    <span className="mr-1">{config.icon}</span>
+                                    {config.label}
+                                    {summary.count > 0 && (
+                                        <Badge variant="secondary" className="ml-1 h-4 px-1 text-xs">
+                                            {summary.count}
+                                        </Badge>
+                                    )}
+                                </TabsTrigger>
+                            );
+                        })}
+                    </TabsList>
+
+                    {(Object.keys(CATEGORY_CONFIG) as AssetCategory[]).map((category) => (
+                        <TabsContent key={category} value={category}>
+                            {filterAssetsByCategory(category).length === 0 ? (
+                                <div className="text-center py-12">
+                                    <div className="text-4xl mb-2">{CATEGORY_CONFIG[category].icon}</div>
+                                    <p className="text-muted-foreground mb-4">
+                                        {category === "ALL" 
+                                            ? "Henüz hiç varlığınız yok" 
+                                            : `${CATEGORY_CONFIG[category].label} kategorisinde varlık yok`}
+                                    </p>
+                                    <AddTransactionDialog
+                                        trigger={
+                                            <Button variant="outline" size="sm" className="gap-2">
+                                                <Plus className="h-4 w-4" />
+                                                İşlem Ekle
+                                            </Button>
+                                        }
+                                        onSuccess={handleAddTransactionSuccess}
+                                        onNewAssetAdded={onNewAssetAdded}
+                                    />
+                                </div>
+                            ) : (
                 <div className="rounded-md border">
                     <Table>
                         <TableHeader>
@@ -194,11 +398,11 @@ export function AssetsTable({
                                 <TableHead className="text-right">Mevcut Değer</TableHead>
                                 <TableHead className="text-right">K/Z</TableHead>
                                 <TableHead className="text-right">K/Z %</TableHead>
-                                <TableHead className="w-12"></TableHead>
+                                <TableHead className="text-center">İşlemler</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {assets.map((asset) => {
+                            {filterAssetsByCategory(category).map((asset) => {
                                 const profitLossColor = (asset.holdings.profitLoss ?? 0) >= 0 
                                     ? "text-green-600 dark:text-green-400" 
                                     : "text-red-600 dark:text-red-400";
@@ -280,18 +484,34 @@ export function AssetsTable({
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            {onAssetClick && (
+                                            <div className="flex items-center justify-center gap-1">
+                                                {onAssetClick && (
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="sm"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            onAssetClick(asset);
+                                                        }}
+                                                        title="Detayları Gör"
+                                                    >
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
+                                                )}
                                                 <Button 
                                                     variant="ghost" 
                                                     size="sm"
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        onAssetClick(asset.id);
+                                                        handleDeleteAsset(asset.id, asset.name);
                                                     }}
+                                                    disabled={deletingAssetId === asset.id}
+                                                    title="Sil"
+                                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
                                                 >
-                                                    <Eye className="h-4 w-4" />
+                                                    <Trash2 className="h-4 w-4" />
                                                 </Button>
-                                            )}
+                                            </div>
                                         </TableCell>
                                     </TableRow>
                                 );
@@ -299,6 +519,10 @@ export function AssetsTable({
                         </TableBody>
                     </Table>
                 </div>
+                            )}
+                        </TabsContent>
+                    ))}
+                </Tabs>
             </CardContent>
         </Card>
     );

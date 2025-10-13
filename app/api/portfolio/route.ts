@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db, portfolios, assets, transactions } from "@/db";
 import { requireAuth } from "@/lib/auth-utils";
-import { eq, sum, count } from "drizzle-orm";
+import { eq, sum, count, and } from "drizzle-orm";
 
 /**
  * GET /api/portfolio
@@ -33,25 +33,71 @@ export async function GET(request: NextRequest) {
             userPortfolios.push(defaultPortfolio[0]);
         }
 
-        // Kullanıcının varlıklarını ve işlem özetini al
-        const assetSummary = await db
-            .select({
-                assetId: assets.id,
-                assetName: assets.name,
-                assetType: assets.assetType,
-                totalQuantity: sum(transactions.quantity).mapWith(Number),
-                totalAmount: sum(transactions.totalAmount).mapWith(Number),
-                transactionCount: count(transactions.id).mapWith(Number),
-            })
+        // Kullanıcının varlıklarını al
+        const userAssets = await db
+            .select()
             .from(assets)
-            .leftJoin(transactions, eq(transactions.assetId, assets.id))
-            .where(eq(assets.userId, session.user.id))
-            .groupBy(assets.id, assets.name, assets.assetType);
+            .where(eq(assets.userId, session.user.id));
+
+        // Her asset için holdings hesapla
+        const assetSummary = await Promise.all(
+            userAssets.map(async (asset) => {
+                const buyTotal = await db
+                    .select({
+                        totalQuantity: sum(transactions.quantity).mapWith(Number),
+                        totalAmount: sum(transactions.totalAmount).mapWith(Number),
+                        transactionCount: count(transactions.id).mapWith(Number)
+                    })
+                    .from(transactions)
+                    .where(and(
+                        eq(transactions.assetId, asset.id),
+                        eq(transactions.transactionType, "BUY")
+                    ));
+
+                const sellTotal = await db
+                    .select({
+                        totalQuantity: sum(transactions.quantity).mapWith(Number),
+                        totalAmount: sum(transactions.totalAmount).mapWith(Number)
+                    })
+                    .from(transactions)
+                    .where(and(
+                        eq(transactions.assetId, asset.id),
+                        eq(transactions.transactionType, "SELL")
+                    ));
+
+                const buyQuantity = buyTotal[0]?.totalQuantity || 0;
+                const sellQuantity = sellTotal[0]?.totalQuantity || 0;
+                const buyAmount = buyTotal[0]?.totalAmount || 0;
+                const sellAmount = sellTotal[0]?.totalAmount || 0;
+
+                const netQuantity = buyQuantity - sellQuantity;
+                const netAmount = buyAmount - sellAmount;
+                const averagePrice = netQuantity > 0 ? netAmount / netQuantity : 0;
+                
+                const currentValue = asset.currentPrice && netQuantity > 0 
+                    ? parseFloat(asset.currentPrice) * netQuantity 
+                    : netAmount;
+
+                return {
+                    assetId: asset.id,
+                    assetName: asset.name,
+                    assetType: asset.assetType,
+                    netQuantity,
+                    netAmount,
+                    averagePrice,
+                    currentValue,
+                    transactionCount: buyTotal[0]?.transactionCount || 0
+                };
+            })
+        );
+
+        // Sadece holding'i olan asset'ları filtrele
+        const activeAssets = assetSummary.filter(asset => asset.netQuantity > 0);
 
         // Portföy özetini hesapla
-        const totalValue = 0; // Şimdilik 0, sonradan gerçek fiyatlarla hesaplanır
-        const totalCost = assetSummary.reduce((sum, asset) => sum + (asset.totalAmount || 0), 0);
-        const totalAssets = assetSummary.length;
+        const totalValue = activeAssets.reduce((sum, asset) => sum + asset.currentValue, 0);
+        const totalCost = activeAssets.reduce((sum, asset) => sum + asset.netAmount, 0);
+        const totalAssets = activeAssets.length;
 
         return Response.json({
             success: true,
@@ -62,18 +108,18 @@ export async function GET(request: NextRequest) {
                 totalProfitLossPercent: totalCost > 0 ? ((totalValue - totalCost) / totalCost) * 100 : 0,
                 totalAssets,
                 currency: "TRY",
-                assets: assetSummary.map(asset => ({
+                assets: activeAssets.map(asset => ({
                     id: asset.assetId,
                     name: asset.assetName,
                     assetType: asset.assetType,
                     holdings: {
-                        netQuantity: asset.totalQuantity || 0,
-                        netAmount: asset.totalAmount || 0,
-                        averagePrice: asset.totalQuantity && asset.totalQuantity > 0 ? (asset.totalAmount || 0) / asset.totalQuantity : 0,
-                        currentValue: 0, // Şimdilik 0
-                        profitLoss: 0,
-                        profitLossPercent: 0,
-                        totalTransactions: asset.transactionCount || 0
+                        netQuantity: asset.netQuantity,
+                        netAmount: asset.netAmount,
+                        averagePrice: asset.averagePrice,
+                        currentValue: asset.currentValue,
+                        profitLoss: asset.currentValue - asset.netAmount,
+                        profitLossPercent: asset.netAmount > 0 ? ((asset.currentValue - asset.netAmount) / asset.netAmount) * 100 : 0,
+                        totalTransactions: asset.transactionCount
                     }
                 }))
             }

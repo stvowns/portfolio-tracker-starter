@@ -198,7 +198,27 @@ export async function POST(request: NextRequest) {
             }
         }
         
-        // Asset'ı veritabanına ekle
+        // Aynı isim ve tipe sahip asset zaten var mı kontrol et
+        const existingAsset = await db
+            .select()
+            .from(assets)
+            .where(and(
+                eq(assets.userId, session.user.id),
+                eq(assets.name, validatedData.name),
+                eq(assets.assetType, validatedData.assetType)
+            ))
+            .limit(1);
+
+        // Eğer varsa, mevcut asset'i döndür
+        if (existingAsset.length > 0) {
+            return Response.json({
+                success: true,
+                message: "Mevcut varlık kullanıldı",
+                data: existingAsset[0]
+            }, { status: 200 });
+        }
+        
+        // Yoksa yeni asset oluştur
         const newAsset = await db
             .insert(assets)
             .values({
@@ -228,8 +248,9 @@ export async function POST(request: NextRequest) {
             );
         }
         
+        const errorMessage = error instanceof Error ? error.message : "Bilinmeyen hata";
         return Response.json(
-            { success: false, error: "Varlık eklenirken hata oluştu" },
+            { success: false, error: "Varlık eklenirken hata oluştu", details: errorMessage },
             { status: 500 }
         );
     }

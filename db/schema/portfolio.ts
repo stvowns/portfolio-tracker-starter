@@ -52,6 +52,12 @@ export const assets = sqliteTable("assets", {
     category: text("category"), // Tech Stock, Kıymetli Maden vs.
     currentPrice: real("current_price"),
     lastUpdated: integer("last_updated", { mode: "timestamp" }),
+    
+    // Price cache configuration (Added in migration 0003)
+    priceSource: text("price_source").default("borsa-mcp"),
+    autoPriceUpdate: integer("auto_price_update", { mode: "boolean" }).default(true),
+    priceCacheEnabled: integer("price_cache_enabled", { mode: "boolean" }).default(true),
+    
     createdAt: integer("created_at", { mode: "timestamp" })
         .$defaultFn(() => new Date())
         .notNull(),

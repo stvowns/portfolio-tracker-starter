@@ -477,8 +477,60 @@ class ErrorBoundary extends React.Component {
 
 ---
 
+## 💰 **Fiyat API Entegrasyonu (Yeni Özellik!)**
+
+### ✅ **Tamamlanan İyileştirmeler** (2025-10-13)
+
+#### 🔌 **Borsa MCP Entegrasyonu**
+- **Database Schema**:
+  - ✅ `price_cache` tablosu - Fiyat verileri cache
+  - ✅ `price_sync_logs` tablosu - Senkronizasyon logları
+  - ✅ Assets tablosuna `price_source`, `auto_price_update`, `price_cache_enabled` alanları
+
+- **Backend Services**:
+  - ✅ `borsa-mcp-client.ts` - Python subprocess wrapper
+  - ✅ `price-sync-service.ts` - Fiyat senkronizasyon servisi
+  - ✅ Piyasa saatleri kontrolü
+  - ✅ Retry logic ve error handling
+
+- **API Endpoints**:
+  - ✅ `POST /api/prices/sync` - Manuel senkronizasyon
+  - ✅ `GET /api/prices/sync` - Health check
+
+#### 📊 **Desteklenen Varlıklar**
+- 🏆 **Altın**: Gram, Çeyrek, Yarım, Tam (Dovizcom)
+- 💰 **Gümüş**: Ons, Gram (Dovizcom)
+- 📈 **Hisseler**: 758 BIST hissesi (Yahoo Finance + KAP)
+- 💼 **Fonlar**: 800+ TEFAS fonu
+- ₿ **Kripto**: 295+ TRY çifti (BtcTurk)
+- 💵 **Döviz**: USD, EUR, GBP vb. (Dovizcom)
+- 🌾 **Emtia**: Petrol, Doğalgaz (Dovizcom)
+
+#### ⏰ **Senkronizasyon Stratejisi**
+- **Fonlar**: Hafta içi 11:00 (günlük)
+- **Diğer Varlıklar**: Her saat başı
+- **Kripto**: 7/24 saatlik senkronizasyon
+- **Piyasa Kontrolü**: Otomatik piyasa saatleri validasyonu
+
+### 📚 **Dokümantasyon**
+- 📄 `documentation/PRICE_API_INTEGRATION.md` - Kapsamlı entegrasyon rehberi (981 satır)
+- 📄 `documentation/PRICE_API_ENDPOINTS.md` - API endpoint dokümantasyonu
+
+### ⚠️ **Limitasyonlar**
+- ❌ Yabancı hisseler (AAPL, GOOGL vb.) - Manuel giriş
+- ❌ ETF'ler (SPY, QQQ vb.) - Manuel giriş
+
+### 🚀 **Sonraki Adımlar**
+- [ ] Cron service implementasyonu
+- [ ] `/api/prices/latest` endpoint
+- [ ] `/api/prices/history/:id` endpoint
+- [ ] Dashboard'a real-time fiyat güncellemeleri
+
+---
+
 ## 📚 **Next Steps Checklist**
 
+- [x] ✅ Fiyat API entegrasyonu (Borsa MCP)
 - [ ] Phase 2 kartları implementasyonu
 - [ ] Mobile-first responsive testleri
 - [ ] Performance monitoring kurulumu
@@ -486,4 +538,4 @@ class ErrorBoundary extends React.Component {
 - [ ] Analytics ve metrik takibi
 
 *Son güncelleme: 2025-10-13*
-*Bölüm: Dashboard Geliştirme Planı*
+*Bölüm: Dashboard Geliştirme Planı + Fiyat API Entegrasyonu*

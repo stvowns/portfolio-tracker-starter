@@ -3,9 +3,11 @@
 import { Button } from "@/components/ui/button";
 import { Bot, MessageSquare } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
 import { AddTransactionDialog } from "@/components/portfolio/add-transaction-dialog";
 import { PortfolioDashboard } from "./portfolio-dashboard";
+import { DemoPriceFetcher } from "@/components/demo-price-fetcher";
+import { GoldPriceTest } from "@/components/gold-price-test";
+import { AllPricesTest } from "@/components/all-prices-test";
 
 export default function Page() {
   return (
@@ -30,25 +32,31 @@ export default function Page() {
           </div>
         </div>
         
+        {/* All Prices Test - Tüm Kategoriler */}
+        <div className="px-4 lg:px-6">
+          <AllPricesTest />
+        </div>
+        
+        {/* Gold Price Test - Canlı Altın Fiyatı */}
+        <div className="px-4 lg:px-6">
+          <GoldPriceTest />
+        </div>
+        
+        {/* Borsa MCP Demo - Canlı Fiyat Çekici */}
+        <div className="px-4 lg:px-6">
+          <DemoPriceFetcher />
+        </div>
+        
         <PortfolioDashboard />
       </div>
     </div>
   )
 }
 
-// Wrapper component with refresh functionality
 function AddTransactionDialogDialogWithData() {
-  const [refreshKey, setRefreshKey] = useState(0);
-
   const handleSuccess = () => {
-    // Force re-render of PortfolioDashboard by updating the key
-    setRefreshKey(prev => prev + 1);
+    window.location.reload();
   };
 
-  return (
-    <>
-      <AddTransactionDialog onSuccess={handleSuccess} />
-      <PortfolioDashboard key={refreshKey} />
-    </>
-  );
+  return <AddTransactionDialog onSuccess={handleSuccess} />;
 }
