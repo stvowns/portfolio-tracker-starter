@@ -336,6 +336,14 @@ export function AssetsTable({
     const filteredAssets = filterAssetsByCategory(activeCategory);
     const categorySummary = getCategorySummary(activeCategory);
 
+    // Kasadaki TL miktarını hesapla
+    const getAvailableCashTRY = () => {
+        const cashAssets = assets.filter(a => a.assetType === "CASH" && a.name.includes("TRY"));
+        return cashAssets.reduce((sum, asset) => sum + (asset.holdings.currentValue || 0), 0);
+    };
+
+    const availableCashTRY = getAvailableCashTRY();
+
     return (
         <Card>
             <CardHeader>
@@ -363,6 +371,9 @@ export function AssetsTable({
                         open={isDialogOpen}
                         onOpenChange={setIsDialogOpen}
                         onNewAssetAdded={onNewAssetAdded}
+                        defaultValues={{
+                            availableCash: availableCashTRY
+                        }}
                     />
                 </div>
             </CardHeader>

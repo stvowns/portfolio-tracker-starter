@@ -495,7 +495,7 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
             )}
 
             {summary && assets.length > 0 && (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <StatCard
                         title="Toplam Değer"
                         value={formatCurrency(summary.totalValue)}
@@ -520,14 +520,7 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
                         descriptionColor={profitColor}
                     />
                     
-                    <StatCard
-                        title="Performans"
-                        value={formatPercent(summary.totalProfitLossPercent)}
-                        description="Toplam getiri oranı"
-                        icon={isProfit ? TrendingUp : TrendingDown}
-                        iconColor={profitColor}
-                        valueColor={profitColor}
-                    />
+
                 </div>
             )}
 
@@ -617,6 +610,11 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
                 isOpen={isAssetDetailOpen}
                 onClose={() => setIsAssetDetailOpen(false)}
                 onTransactionAdded={refreshData}
+                availableCash={
+                    assets
+                        .filter(a => a.assetType === "CASH" && a.name.includes("TRY"))
+                        .reduce((sum, asset) => sum + (asset.holdings.currentValue || 0), 0)
+                }
             />
 
             {/* Empty State */}

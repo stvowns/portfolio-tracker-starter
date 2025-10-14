@@ -65,9 +65,16 @@ interface AssetDetailModalProps {
     isOpen: boolean;
     onClose: () => void;
     onTransactionAdded?: () => void;
+    availableCash?: number;
 }
 
-export function AssetDetailModal({ asset, isOpen, onClose, onTransactionAdded }: AssetDetailModalProps) {
+export function AssetDetailModal({ 
+    asset, 
+    isOpen, 
+    onClose, 
+    onTransactionAdded,
+    availableCash = 0 
+}: AssetDetailModalProps) {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(false);
     const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false);
@@ -500,7 +507,7 @@ export function AssetDetailModal({ asset, isOpen, onClose, onTransactionAdded }:
                         transactionType: transactionDialogDefaults?.transactionType || "BUY",
                         pricePerUnit: transactionDialogDefaults?.pricePerUnit,
                         availableQuantity: asset.holdings.netQuantity,
-                        availableCash: 0 // TODO: API'den kasadaki nakit miktarını çek
+                        availableCash: availableCash
                     }}
                 />
             </DialogContent>

@@ -31,12 +31,27 @@ import { toast } from "sonner";
 // Form schema
 const transactionSchema = z.object({
     assetName: z.string().min(1, "Varlık adı gereklidir"),
-    assetType: z.enum(["GOLD", "SILVER", "STOCK", "FUND", "CRYPTO", "EUROBOND", "ETF", "CASH"]),
-    transactionType: z.enum(["BUY", "SELL"]),
-    quantity: z.number().positive("Miktar pozitif olmalıdır"),
-    pricePerUnit: z.number().positive("Fiyat pozitif olmalıdır"),
+    assetType: z.enum(["GOLD", "SILVER", "STOCK", "FUND", "CRYPTO", "EUROBOND", "ETF", "CASH"], {
+        required_error: "Varlık türü seçmelisiniz",
+        invalid_type_error: "Geçerli bir varlık türü seçiniz"
+    }),
+    transactionType: z.enum(["BUY", "SELL"], {
+        required_error: "İşlem türü seçmelisiniz",
+        invalid_type_error: "Alış veya satış seçiniz"
+    }),
+    quantity: z.number({
+        required_error: "Miktar giriniz",
+        invalid_type_error: "Miktar sayı olmalıdır"
+    }).positive("Miktar sıfırdan büyük olmalıdır"),
+    pricePerUnit: z.number({
+        required_error: "Fiyat giriniz",
+        invalid_type_error: "Fiyat sayı olmalıdır"
+    }).positive("Fiyat sıfırdan büyük olmalıdır"),
     transactionDate: z.string().min(1, "Tarih gereklidir"),
-    currency: z.enum(["TRY", "USD", "EUR"]).default("TRY"),
+    currency: z.enum(["TRY", "USD", "EUR"], {
+        required_error: "Para birimi seçmelisiniz",
+        invalid_type_error: "Geçerli para birimi seçiniz"
+    }).default("TRY"),
     notes: z.string().optional(),
 });
 
