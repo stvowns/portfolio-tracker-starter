@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { AssetsTable } from "@/components/portfolio/assets-table";
 import { AssetDetailModal } from "@/components/portfolio/asset-detail-modal";
+import { PortfolioPieChart } from "@/components/portfolio/portfolio-pie-chart";
+import { AssetCard } from "@/components/portfolio/asset-card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -138,6 +141,7 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
     const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
     const [isAssetDetailOpen, setIsAssetDetailOpen] = useState(false);
     const [isResetting, setIsResetting] = useState(false);
+    const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
 
     const USD_TRY_RATE = 35.12; // TODO: Gerçek zamanlı kur çekebiliriz
 
@@ -271,11 +275,11 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
     const isProfit = (summary?.totalProfitLoss ?? 0) >= 0;
     const profitColor = isProfit ? 'text-green-600' : 'text-red-600';
 
-    // Asset Type Distribution
+    // Asset Type Distribution with Currency breakdown for CASH
     const getAssetDistribution = () => {
         if (!assets.length) return [];
         
-        const typeMap = new Map<string, { value: number; emoji: string }>();
+        const typeMap = new Map<string, { value: number; emoji: string; label: string }>();
         const totalValue = summary?.totalValue || 0;
         
         const emojiMap: Record<string, string> = {
@@ -286,6 +290,8 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
             'fund': '💰',
             'crypto': '₿',
             'bond': '📕',
+            'eurobond': '📕',
+            'etf': '📦',
             'currency': '💵',
             'commodity': '🌾',
             'real_estate': '🏠'
@@ -295,25 +301,43 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
             const currentValue = asset.holdings.currentValue || 0;
             const assetType = asset.assetType.toLowerCase();
             
-            if (!typeMap.has(assetType)) {
-                typeMap.set(assetType, { 
+            // CASH varlıkları için currency bazlı ayrım yap
+            let mapKey = assetType;
+            if (assetType === 'cash' && asset.name) {
+                // "Nakit TRY" -> "cash_try"
+                const currencyMatch = asset.name.match(/Nakit\s*(\w+)/i);
+                if (currencyMatch) {
+                    mapKey = `cash_${currencyMatch[1].toLowerCase()}`;
+                }
+            }
+            
+            if (!typeMap.has(mapKey)) {
+                const label = mapKey.startsWith('cash_') 
+                    ? `Nakit (${mapKey.split('_')[1].toUpperCase()})`
+                    : getAssetTypeLabel(assetType);
+                    
+                typeMap.set(mapKey, { 
                     value: 0, 
-                    emoji: emojiMap[assetType] || '📊' 
+                    emoji: emojiMap[assetType] || '📊',
+                    label
                 });
             }
-            const current = typeMap.get(assetType)!;
+            const current = typeMap.get(mapKey)!;
             current.value += currentValue;
         });
         
-        // Sort: CASH first, then by percentage
+        // Sort: CASH currencies first, then by percentage
         return Array.from(typeMap.entries()).map(([type, data]) => ({
             type,
             value: data.value,
             percentage: totalValue > 0 ? (data.value / totalValue) * 100 : 0,
-            emoji: data.emoji
+            emoji: data.emoji,
+            label: data.label
         })).sort((a, b) => {
-            if (a.type === 'cash') return -1;
-            if (b.type === 'cash') return 1;
+            const aIsCash = a.type.startsWith('cash');
+            const bIsCash = b.type.startsWith('cash');
+            if (aIsCash && !bIsCash) return -1;
+            if (!aIsCash && bIsCash) return 1;
             return b.percentage - a.percentage;
         });
     };
@@ -497,85 +521,84 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
                 </div>
             )}
 
-            {/* Basit Özet - Varlık Dağılımı Badgeleri */}
+            {/* Varlık Dağılımı Badgeleri */}
             {summary && assets.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-6">
+                <div className="flex flex-wrap gap-2">
                     {assetDistribution.map((item) => (
                         <div 
                             key={item.type} 
                             className="px-4 py-2 rounded-full bg-primary/10 text-primary font-medium text-sm flex items-center gap-2"
                         >
                             <span>{item.emoji}</span>
-                            <span>{getAssetTypeLabel(item.type)}: {item.percentage.toFixed(2)}%</span>
+                            <span>{item.label}: {item.percentage.toFixed(2)}%</span>
                         </div>
                     ))}
                 </div>
             )}
 
-            {/* Merkez - Toplam Değer */}
+            {/* Pie Chart - Toplam Değer */}
             {summary && assets.length > 0 && (
-                <Card className="mb-6">
-                    <CardContent className="flex flex-col items-center justify-center py-12">
-                        <div className="text-center mb-4">
-                            <p className="text-muted-foreground text-sm mb-2">Toplam Değer</p>
-                            <p className="text-5xl font-bold">{formatCurrency(summary.totalValue)}</p>
-                            <div className="flex items-center justify-center gap-2 mt-2">
-                                <span className="text-sm text-muted-foreground">{currency}</span>
-                                {onCurrencyChange && (
-                                    <Button variant="ghost" size="sm" onClick={onCurrencyChange} className="h-6 px-2">
-                                        🔄
-                                    </Button>
-                                )}
+                <PortfolioPieChart
+                    distribution={assetDistribution}
+                    totalValue={summary.totalValue || 0}
+                    currency={currency}
+                    onCurrencyChange={onCurrencyChange}
+                    profitLoss={summary.totalProfitLoss || 0}
+                    profitLossPercent={summary.totalProfitLossPercent || 0}
+                    realizedPL={summary.totalRealizedPL || 0}
+                />
+            )}
+
+            {/* Assets View - Cards or Table */}
+            {assets.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <CardTitle>Portföyümdeki Varlıklar</CardTitle>
+                                <CardDescription>
+                                    {new Date().toLocaleDateString('tr-TR', { 
+                                        day: '2-digit', 
+                                        month: '2-digit', 
+                                        year: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit'
+                                    })}
+                                </CardDescription>
                             </div>
+                            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} className="w-auto">
+                                <TabsList>
+                                    <TabsTrigger value="cards">Kartlar</TabsTrigger>
+                                    <TabsTrigger value="table">Tablo</TabsTrigger>
+                                </TabsList>
+                            </Tabs>
                         </div>
-                        
-                        {/* Kar/Zarar Özeti */}
-                        <div className="grid grid-cols-2 gap-6 mt-6 w-full max-w-md">
-                            <div className="text-center p-4 rounded-lg bg-muted/30">
-                                <div className="flex items-center justify-center gap-1 mb-1">
-                                    <p className="text-xs text-muted-foreground">Toplam K/Z</p>
-                                    <div className="group relative">
-                                        <span className="text-xs cursor-help">ℹ️</span>
-                                        <div className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-popover text-popover-foreground text-xs rounded-md shadow-lg z-10">
-                                            Gerçekleşen + Gerçekleşmemiş kar/zarar toplamı
-                                        </div>
-                                    </div>
-                                </div>
-                                <p className={`text-2xl font-bold ${profitColor}`}>
-                                    {formatCurrency(summary.totalProfitLoss)}
-                                </p>
-                                <p className={`text-sm ${profitColor}`}>
-                                    {formatPercent(summary.totalProfitLossPercent)}
-                                </p>
+                    </CardHeader>
+                    <CardContent>
+                        {viewMode === "cards" ? (
+                            <div className="space-y-3">
+                                {assets.map((asset) => (
+                                    <AssetCard
+                                        key={asset.id}
+                                        asset={asset}
+                                        currency={currency}
+                                        onAssetClick={() => handleAssetClick(asset)}
+                                        dailyChange={undefined}
+                                    />
+                                ))}
                             </div>
-                            <div className="text-center p-4 rounded-lg bg-muted/30">
-                                <div className="flex items-center justify-center gap-1 mb-1">
-                                    <p className="text-xs text-muted-foreground">Gerçekleşen K/Z</p>
-                                    <div className="group relative">
-                                        <span className="text-xs cursor-help">ℹ️</span>
-                                        <div className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-popover text-popover-foreground text-xs rounded-md shadow-lg z-10">
-                                            Satışlardan elde edilen gerçek kar/zarar
-                                        </div>
-                                    </div>
-                                </div>
-                                <p className={`text-2xl font-bold ${(summary.totalRealizedPL || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                    {formatCurrency(summary.totalRealizedPL || 0)}
-                                </p>
-                                <p className="text-xs text-muted-foreground">💰 Cebinizdeki</p>
-                            </div>
-                        </div>
+                        ) : (
+                            <AssetsTable 
+                                assets={assets}
+                                currency={currency}
+                                onAssetClick={handleAssetClick}
+                                onTransactionAdded={refreshData}
+                                onAssetDeleted={refreshData}
+                            />
+                        )}
                     </CardContent>
                 </Card>
             )}
-
-            {/* Assets Table */}
-            <AssetsTable 
-                assets={assets}
-                currency={currency}
-                onAssetClick={handleAssetClick}
-                onTransactionAdded={refreshData}
-                onAssetDeleted={refreshData}
-            />
 
             {/* Asset Detail Modal */}
             <AssetDetailModal 
