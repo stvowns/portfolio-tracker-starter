@@ -7,16 +7,19 @@
 ## Current Implementation
 
 ### Ticker Sync
-**Strategy:** Static popular funds list (58 funds)
-- ✅ No API calls required
-- ✅ Instant sync (~0.2 seconds)
-- ✅ Covers 80%+ of retail investors' needs
-- ❌ Limited to 58 pre-selected popular funds
+**Strategy:** Full sync via RapidAPI (3,285 funds)
+- ✅ `/api/v1/funds` = 1 request → ALL 3285 funds
+- ✅ Daily syncs (11:00 + 17:00) = only 2 requests/day
+- ✅ Complete coverage of all TEFAS funds
+- ✅ ~10 seconds per sync
 
-**Why not full sync?**
-- Full sync would use 1 request (all 3285 funds)
-- But it's wasteful when we only need popular ones
-- Preserves API quota for price fetching
+**Rate Limit Math:**
+```
+Daily Budget: 10 requests/day
+- 2 requests: Ticker sync (11:00, 17:00)
+- 8 requests: Price fetching (as needed)
+= Perfect fit for our use case!
+```
 
 ### Price Fetching
 **Strategy:** GitHub primary, RapidAPI fallback
@@ -31,22 +34,27 @@
 
 2. **RapidAPI TEFAS** (Fallback)
    - Only used if fund not in GitHub data
-   - ⚠️ 10 requests/day limit
+   - ⚠️ Uses from remaining 8 requests/day
    - ✅ Real-time data
    - ✅ All 3285 funds available
    - Cached for 4 hours to reduce calls
 
+**Expected Daily Usage:**
+- Ticker sync: 2 requests (scheduled)
+- Price fetch: ~3-5 requests (user-triggered)
+- Total: ~5-7 requests/day (within 10/day limit)
+
 ## Usage Recommendations
 
 ### For Development
-- Use GitHub API for testing (no limits)
-- Only test RapidAPI when necessary
-- Monitor daily usage
+- Use GitHub API for price testing (no limits)
+- Manual ticker sync only when needed
+- Monitor daily usage in RapidAPI dashboard
 
 ### For Production
-- Most users will use GitHub API (popular funds)
-- RapidAPI acts as safety net for rare funds
-- Expected usage: 2-5 RapidAPI calls/day
+- Scheduled sync: 11:00 and 17:00 daily (2 requests)
+- Price fetch: GitHub primary, RapidAPI fallback
+- Expected total: 5-7 requests/day (safely under 10/day)
 
 ## Monitoring
 Check RapidAPI dashboard: https://rapidapi.com/serifcolakel-wlDXdMYbT/api/tefas-api/playground

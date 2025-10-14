@@ -165,10 +165,10 @@ export default function Page() {
               onClick={() => handleTickerSync('TEFAS')}
               disabled={syncingTefas}
               className="gap-2"
-              title="TEFAS Fonları Senkronizasyonu (58 popüler fon - statik liste)"
+              title="TEFAS Fonları Senkronizasyonu (3285 fon - RapidAPI)"
             >
               <Database className={`h-4 w-4 ${syncingTefas ? 'animate-spin' : ''}`} />
-              {syncingTefas ? '⏳' : '💰'} TEFAS (58)
+              {syncingTefas ? '⏳' : '💰'} TEFAS
             </Button>
 
             <AddTransactionDialogDialogWithData />

@@ -7,7 +7,8 @@ import { db } from '../db';
 import { tickerCache, tickerSyncLogs } from '../db/schema/price-cache';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
-import { POPULAR_TEFAS_FUNDS } from '../lib/data/tefas-funds-static';
+
+const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY || '8087c41afbmsh30bf3e0c8b0b777p155f23jsn0c33bae3cbe8';
 
 async function syncTickers() {
     const logId = randomUUID();
@@ -24,18 +25,38 @@ async function syncTickers() {
             createdAt: new Date()
         });
         
-        // Use static popular funds list to avoid RapidAPI rate limits
-        // RapidAPI Free Plan: 10 requests/day only - too expensive for full sync
-        console.log('📋 Loading popular TEFAS funds from static list...');
-        console.log('⚠️  Note: Using static list to preserve RapidAPI rate limits (10 req/day)');
+        // Fetch all TEFAS funds from RapidAPI
+        // RapidAPI Free Plan: 10 requests/day
+        // /api/v1/funds = 1 request → ALL 3285 funds
+        // Daily syncs (11:00 + 17:00) = only 2 requests/day
+        // Remaining 8 requests for price fetching
+        console.log('📥 Fetching all TEFAS funds from RapidAPI...');
         
-        const funds = POPULAR_TEFAS_FUNDS.map(f => ({
-            fon_kodu: f.kod,
-            fon_adi: f.adi,
-            fon_turu: f.tip
+        const response = await fetch('https://tefas-api.p.rapidapi.com/api/v1/funds', {
+            headers: {
+                'x-rapidapi-key': RAPIDAPI_KEY,
+                'x-rapidapi-host': 'tefas-api.p.rapidapi.com'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`RapidAPI returned ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        
+        if (!result.success || !result.data) {
+            throw new Error('Invalid response from RapidAPI');
+        }
+        
+        // Transform to our format
+        const funds = result.data.map((fund: any) => ({
+            fon_kodu: fund.key,
+            fon_adi: fund.value,
+            fon_turu: null // Type info not available in list endpoint
         }));
         
-        console.log(`✅ Loaded ${funds.length} popular funds from static list`);
+        console.log(`✅ Fetched ${funds.length} funds from RapidAPI (total: ${result.meta?.total || funds.length})`);
         
         // Clear existing
         console.log('🗑️  Clearing existing TEFAS funds...');
