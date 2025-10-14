@@ -123,12 +123,14 @@ export function AssetDetailModal({ asset, isOpen, onClose, onTransactionAdded }:
 
     const getAssetTypeLabel = (type: string) => {
         const labels: Record<string, string> = {
+            "CASH": "Nakit",
             "GOLD": "Altın",
             "SILVER": "Gümüş", 
             "STOCK": "Hisse Senedi",
             "FUND": "Yatırım Fonu",
             "CRYPTO": "Kripto Para",
-            "EUROBOND": "Eurobond"
+            "EUROBOND": "Eurobond",
+            "ETF": "ETF"
         };
         return labels[type] || type;
     };
@@ -492,10 +494,13 @@ export function AssetDetailModal({ asset, isOpen, onClose, onTransactionAdded }:
                         setIsAddTransactionOpen(open);
                         if (!open) setTransactionDialogDefaults(null);
                     }}
-                    defaultValues={transactionDialogDefaults || {
+                    defaultValues={{
                         assetType: asset.assetType,
                         assetName: asset.name,
-                        transactionType: "BUY"
+                        transactionType: transactionDialogDefaults?.transactionType || "BUY",
+                        pricePerUnit: transactionDialogDefaults?.pricePerUnit,
+                        availableQuantity: asset.holdings.netQuantity,
+                        availableCash: 0 // TODO: API'den kasadaki nakit miktarını çek
                     }}
                 />
             </DialogContent>
