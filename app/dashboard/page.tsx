@@ -31,7 +31,8 @@ if (typeof window !== 'undefined') {
 export default function Page() {
   const [currency, setCurrency] = useState<"TRY" | "USD">("TRY");
   const [mounted, setMounted] = useState(false);
-  const [syncing, setSyncing] = useState(false);
+  const [syncingBist, setSyncingBist] = useState(false);
+  const [syncingTefas, setSyncingTefas] = useState(false);
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
 
@@ -47,35 +48,38 @@ export default function Page() {
     setTheme(theme === "dark" ? "light" : "dark");
   };
 
-  const handleTickerSync = async () => {
-    console.log('[BIST Sync] Button clicked, starting sync...');
-    setSyncing(true);
+  const handleTickerSync = async (syncType: 'BIST' | 'TEFAS') => {
+    const isBist = syncType === 'BIST';
+    console.log(`[${syncType} Sync] Button clicked, starting sync...`);
+    
+    if (isBist) setSyncingBist(true);
+    else setSyncingTefas(true);
     
     try {
-      console.log('[BIST Sync] Fetching /api/tickers/sync...');
+      console.log(`[${syncType} Sync] Fetching /api/tickers/sync...`);
       const response = await fetch('/api/tickers/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          sync_type: 'BIST', 
+          sync_type: syncType, 
           force: true,
           triggered_by: 'manual'
         })
       });
       
-      console.log('[BIST Sync] Response status:', response.status);
+      console.log(`[${syncType} Sync] Response status:`, response.status);
       const data = await response.json();
-      console.log('[BIST Sync] Response data:', data);
+      console.log(`[${syncType} Sync] Response data:`, data);
       
       if (data.success) {
         const result = data.data.results[0];
-        console.log('[BIST Sync] Success:', result);
+        console.log(`[${syncType} Sync] Success:`, result);
         toast({
-          title: "✅ BIST Ticker Senkronizasyonu Tamamlandı",
-          description: `${result.successful} ticker başarıyla eklendi. Süre: ${(result.duration_ms / 1000).toFixed(2)}s`,
+          title: `✅ ${syncType} Senkronizasyonu Tamamlandı`,
+          description: `${result.successful} ${isBist ? 'ticker' : 'fon'} başarıyla eklendi. Süre: ${(result.duration_ms / 1000).toFixed(2)}s`,
         });
       } else {
-        console.error('[BIST Sync] Failed:', data.error);
+        console.error(`[${syncType} Sync] Failed:`, data.error);
         toast({
           title: "❌ Senkronizasyon Hatası",
           description: data.error || "Bilinmeyen bir hata oluştu",
@@ -83,15 +87,16 @@ export default function Page() {
         });
       }
     } catch (error) {
-      console.error('[BIST Sync] Exception:', error);
+      console.error(`[${syncType} Sync] Exception:`, error);
       toast({
         title: "❌ Bağlantı Hatası",
         description: error instanceof Error ? error.message : "API'ye bağlanırken hata oluştu",
         variant: "destructive"
       });
     } finally {
-      console.log('[BIST Sync] Finished, setting syncing to false');
-      setSyncing(false);
+      console.log(`[${syncType} Sync] Finished`);
+      if (isBist) setSyncingBist(false);
+      else setSyncingTefas(false);
     }
   };
 
@@ -141,17 +146,29 @@ export default function Page() {
               )}
             </Button>
 
-            {/* Ticker Sync Test Button (Development Only) */}
+            {/* Ticker Sync Buttons (Development Only) */}
             <Button
               variant="outline"
               size="sm"
-              onClick={handleTickerSync}
-              disabled={syncing}
+              onClick={() => handleTickerSync('BIST')}
+              disabled={syncingBist}
               className="gap-2"
               title="BIST Ticker'larını Senkronize Et"
             >
-              <Database className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
-              {syncing ? '⏳ Syncing...' : '📊 BIST Sync'}
+              <Database className={`h-4 w-4 ${syncingBist ? 'animate-spin' : ''}`} />
+              {syncingBist ? '⏳' : '📊'} BIST
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleTickerSync('TEFAS')}
+              disabled={syncingTefas}
+              className="gap-2"
+              title="TEFAS Fonlarını Senkronize Et"
+            >
+              <Database className={`h-4 w-4 ${syncingTefas ? 'animate-spin' : ''}`} />
+              {syncingTefas ? '⏳' : '💰'} TEFAS
             </Button>
 
             <AddTransactionDialogDialogWithData />

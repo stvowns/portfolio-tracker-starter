@@ -25,53 +25,86 @@ export async function POST(request: NextRequest) {
         const body = await request.json().catch(() => ({}));
         const validated = TickerSyncRequestSchema.parse(body);
         
-        if (validated.sync_type !== 'BIST') {
-            return NextResponse.json({
-                success: false,
-                error: 'Only BIST sync is supported currently'
-            }, { status: 400 });
+        // Determine which scripts to run
+        const scriptsToRun: Array<{type: string, script: string}> = [];
+        
+        if (validated.sync_type === 'BIST' || validated.sync_type === 'FULL') {
+            scriptsToRun.push({ type: 'BIST', script: 'scripts/sync-bist-tickers.ts' });
         }
         
-        // Execute sync script as child process (avoids XLSX import issues in Next.js)
-        console.log('[Ticker Sync API] Starting BIST sync via script...');
+        if (validated.sync_type === 'TEFAS' || validated.sync_type === 'FULL') {
+            scriptsToRun.push({ type: 'TEFAS', script: 'scripts/sync-tefas-funds.ts' });
+        }
+        
+        // Execute sync scripts
+        console.log(`[Ticker Sync API] Starting ${validated.sync_type} sync via scripts...`);
         const startTime = Date.now();
         
-        const { stdout, stderr } = await execAsync('npx tsx scripts/sync-bist-tickers.ts', {
-            cwd: process.cwd(),
-            timeout: 60000 // 60 seconds max
-        });
+        const results = [];
         
-        const duration = Date.now() - startTime;
-        
-        console.log('[Ticker Sync API] Script output:', stdout);
-        if (stderr) {
-            console.error('[Ticker Sync API] Script stderr:', stderr);
-        }
-        
-        // Parse output to extract stats
-        const successMatch = stdout.match(/Success: (\d+)/);
-        const failedMatch = stdout.match(/Failed: (\d+)/);
-        const totalMatch = stdout.match(/Total: (\d+)/);
-        
-        const successful = successMatch ? parseInt(successMatch[1]) : 0;
-        const failed = failedMatch ? parseInt(failedMatch[1]) : 0;
-        const total = totalMatch ? parseInt(totalMatch[1]) : 0;
-        
-        return NextResponse.json({
-            success: failed === 0,
-            message: failed === 0 
-                ? 'Ticker synchronization completed successfully'
-                : 'Ticker synchronization completed with some failures',
-            data: {
-                sync_type: 'BIST',
-                results: [{
-                    type: 'BIST',
+        for (const { type, script } of scriptsToRun) {
+            try {
+                const scriptStart = Date.now();
+                const { stdout, stderr } = await execAsync(`npx tsx ${script}`, {
+                    cwd: process.cwd(),
+                    timeout: 60000 // 60 seconds max
+                });
+                
+                const scriptDuration = Date.now() - scriptStart;
+                
+                console.log(`[Ticker Sync API] ${type} output:`, stdout);
+                if (stderr) {
+                    console.error(`[Ticker Sync API] ${type} stderr:`, stderr);
+                }
+                
+                // Parse output to extract stats
+                const successMatch = stdout.match(/Success: (\d+)/);
+                const failedMatch = stdout.match(/Failed: (\d+)/);
+                const totalMatch = stdout.match(/Total: (\d+)/);
+                
+                const successful = successMatch ? parseInt(successMatch[1]) : 0;
+                const failed = failedMatch ? parseInt(failedMatch[1]) : 0;
+                const total = totalMatch ? parseInt(totalMatch[1]) : 0;
+                
+                results.push({
+                    type,
                     total_records: total,
                     successful,
                     failed,
-                    duration_ms: duration,
+                    duration_ms: scriptDuration,
                     status: failed === 0 ? 'completed' : 'partial'
-                }]
+                });
+            } catch (error) {
+                console.error(`[Ticker Sync API] ${type} sync failed:`, error);
+                results.push({
+                    type,
+                    total_records: 0,
+                    successful: 0,
+                    failed: 0,
+                    duration_ms: 0,
+                    status: 'failed',
+                    error: error instanceof Error ? error.message : 'Unknown error'
+                });
+            }
+        }
+        
+        const duration = Date.now() - startTime;
+        
+        // Check if all syncs were successful
+        const allSuccess = results.every(r => r.status === 'completed');
+        const anyFailed = results.some(r => r.status === 'failed');
+        
+        return NextResponse.json({
+            success: !anyFailed,
+            message: allSuccess
+                ? 'Ticker synchronization completed successfully'
+                : anyFailed
+                ? 'Ticker synchronization failed'
+                : 'Ticker synchronization completed with some failures',
+            data: {
+                sync_type: validated.sync_type,
+                total_duration_ms: duration,
+                results
             }
         });
         

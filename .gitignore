@@ -53,3 +53,4 @@ next-env.d.ts
 # screenshots
 Screenshot*.png
 screenshot*.png
+.env.local
