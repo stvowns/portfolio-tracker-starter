@@ -8,15 +8,20 @@ import Link from "next/link";
 import { AddTransactionDialog } from "@/components/portfolio/add-transaction-dialog";
 import { PortfolioDashboard } from "./portfolio-dashboard";
 
-// Suppress hydration warnings for Dark Reader extension attributes
+// Suppress hydration warnings for Dark Reader and other browser extensions
 if (typeof window !== 'undefined') {
   const originalError = console.error;
-  console.error = (...args) => {
-    if (
-      typeof args[0] === 'string' &&
-      (args[0].includes('data-darkreader') || args[0].includes('Hydration'))
-    ) {
-      return;
+  console.error = (...args: any[]) => {
+    if (typeof args[0] === 'string') {
+      // Ignore hydration errors from browser extensions
+      if (
+        args[0].includes('data-darkreader') ||
+        args[0].includes('Hydration') ||
+        args[0].includes('did not match') ||
+        args[0].includes('suppressHydrationWarning')
+      ) {
+        return;
+      }
     }
     originalError.apply(console, args);
   };

@@ -69,7 +69,8 @@ export function AssetGroupList({
             'cash': 'Nakit',
             'gold': 'Altın',
             'silver': 'Gümüş',
-            'stock': 'Hisse (BIST)',
+            'stock': 'BIST',
+            'international_stock': 'Yabancı Hisse',
             'fund': 'Fon',
             'crypto': 'Kripto',
             'bond': 'Tahvil',
@@ -85,7 +86,8 @@ export function AssetGroupList({
             'cash': '💵',
             'gold': '🪙',
             'silver': '🥈',
-            'stock': '📈',
+            'stock': '🇹🇷',
+            'international_stock': '🌍',
             'fund': '💰',
             'crypto': '₿',
             'bond': '📕',
@@ -178,39 +180,41 @@ export function AssetGroupList({
                             <CollapsibleTrigger asChild>
                                 <Button
                                     variant="ghost"
-                                    className="w-full justify-between p-4 h-auto hover:bg-muted/50"
+                                    className="w-full justify-between p-3 h-auto hover:bg-muted/50"
                                 >
-                                    <div className="flex items-center gap-3">
-                                        <div className="text-2xl">{group.emoji}</div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="text-xl">{group.emoji}</div>
                                         <div className="flex flex-col items-start">
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-semibold text-lg">{group.label}</span>
-                                                <Badge variant="secondary" className="text-xs">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="font-semibold text-base">{group.label}</span>
+                                                <Badge variant="secondary" className="text-xs h-4 px-1">
                                                     {group.count}
                                                 </Badge>
                                             </div>
-                                            <span className="text-sm text-muted-foreground">
-                                                {formatCurrency(group.totalValue)}
+                                            <div className="flex items-baseline gap-2">
+                                                <span className="text-xs font-medium">
+                                                    {formatCurrency(group.totalValue)}
+                                                </span>
                                                 {group.profitLoss !== 0 && (
-                                                    <span className={`ml-2 ${profitColor}`}>
+                                                    <span className={`text-xs font-medium ${profitColor}`}>
                                                         {group.profitLoss >= 0 ? '+' : ''}
                                                         {formatCurrency(group.profitLoss)}
                                                     </span>
                                                 )}
-                                            </span>
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="shrink-0">
                                         {isOpen ? (
-                                            <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
                                         ) : (
-                                            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
                                         )}
                                     </div>
                                 </Button>
                             </CollapsibleTrigger>
                             <CollapsibleContent>
-                                <CardContent className="pt-0 pb-3 space-y-2">
+                                <CardContent className="pt-0 pb-2 px-2 space-y-2">
                                     {group.assets.map(asset => (
                                         <AssetCard
                                             key={asset.id}

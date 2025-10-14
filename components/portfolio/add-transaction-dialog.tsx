@@ -31,7 +31,7 @@ import { toast } from "sonner";
 // Form schema
 const transactionSchema = z.object({
     assetName: z.string().min(1, "Varlık adı gereklidir"),
-    assetType: z.enum(["GOLD", "SILVER", "STOCK", "FUND", "CRYPTO", "EUROBOND", "ETF", "CASH"], {
+    assetType: z.enum(["GOLD", "SILVER", "STOCK", "INTERNATIONAL_STOCK", "FUND", "CRYPTO", "EUROBOND", "ETF", "CASH"], {
         required_error: "Varlık türü seçmelisiniz",
         invalid_type_error: "Geçerli bir varlık türü seçiniz"
     }),
@@ -200,7 +200,8 @@ export function AddTransactionDialog({
         const labels: Record<string, string> = {
             "GOLD": "Altın",
             "SILVER": "Gümüş",
-            "STOCK": "Hisse Senedi",
+            "STOCK": "BIST",
+            "INTERNATIONAL_STOCK": "Yabancı Hisse",
             "FUND": "Yatırım Fonu",
             "CRYPTO": "Kripto Para",
             "EUROBOND": "Eurobond",
@@ -377,7 +378,8 @@ export function AddTransactionDialog({
                             <SelectContent>
                                 <SelectItem value="GOLD">Altın</SelectItem>
                                 <SelectItem value="SILVER">Gümüş</SelectItem>
-                                <SelectItem value="STOCK">Hisse Senedi</SelectItem>
+                                <SelectItem value="STOCK">BIST</SelectItem>
+                                <SelectItem value="INTERNATIONAL_STOCK">Yabancı Hisse</SelectItem>
                                 <SelectItem value="FUND">Yatırım Fonu</SelectItem>
                                 <SelectItem value="CRYPTO">Kripto Para</SelectItem>
                                 <SelectItem value="EUROBOND">Eurobond</SelectItem>

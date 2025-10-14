@@ -5,6 +5,7 @@ export const AssetTypeSchema = z.enum([
     "GOLD",
     "SILVER", 
     "STOCK",
+    "INTERNATIONAL_STOCK",
     "FUND",
     "CRYPTO",
     "EUROBOND",
