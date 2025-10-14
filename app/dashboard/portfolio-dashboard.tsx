@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { AssetDetailModal } from "@/components/portfolio/asset-detail-modal";
 import { PortfolioPieChart } from "@/components/portfolio/portfolio-pie-chart";
-import { AssetCard } from "@/components/portfolio/asset-card";
+import { AssetGroupList } from "@/components/portfolio/asset-group-list";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -522,39 +522,30 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
                 />
             )}
 
-            {/* Assets View - Cards Only */}
+            {/* Assets View - Grouped by Category */}
             {assets.length > 0 && (
-                <Card>
-                    <CardHeader>
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <CardTitle>Portföyümdeki Varlıklar</CardTitle>
-                                <CardDescription>
-                                    {new Date().toLocaleDateString('tr-TR', { 
-                                        day: '2-digit', 
-                                        month: '2-digit', 
-                                        year: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit'
-                                    })}
-                                </CardDescription>
-                            </div>
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between px-2">
+                        <div>
+                            <h2 className="text-xl font-semibold">Portföyümdeki Varlıklar</h2>
+                            <p className="text-sm text-muted-foreground">
+                                {new Date().toLocaleDateString('tr-TR', { 
+                                    day: '2-digit', 
+                                    month: '2-digit', 
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                })}
+                            </p>
                         </div>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-3">
-                            {assets.map((asset) => (
-                                <AssetCard
-                                    key={asset.id}
-                                    asset={asset}
-                                    currency={currency}
-                                    onAssetClick={() => handleAssetClick(asset)}
-                                    dailyChange={undefined}
-                                />
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
+                    </div>
+                    <AssetGroupList
+                        assets={assets}
+                        currency={currency}
+                        onAssetClick={handleAssetClick}
+                        formatCurrency={formatCurrency}
+                    />
+                </div>
             )}
 
             {/* Asset Detail Modal */}
