@@ -54,6 +54,8 @@ interface AddTransactionDialogProps {
         transactionType?: "BUY" | "SELL";
         pricePerUnit?: number;
         quantity?: number;
+        availableQuantity?: number;
+        availableCash?: number;
     };
 }
 
@@ -67,6 +69,8 @@ export function AddTransactionDialog({
 }: AddTransactionDialogProps) {
     const [internalIsOpen, setInternalIsOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [availableQuantity, setAvailableQuantity] = useState<number>(0);
+    const [availableCash, setAvailableCash] = useState<number>(0);
     
     const isOpen = controlledOpen !== undefined ? controlledOpen : internalIsOpen;
     const setIsOpen = onOpenChange || setInternalIsOpen;
@@ -93,16 +97,39 @@ export function AddTransactionDialog({
     const assetName = watch("assetName");
     const transactionType = watch("transactionType");
     const [customCurrency, setCustomCurrency] = useState("");
+    const [showCustomInput, setShowCustomInput] = useState(false);
 
+    // Modal açıldığında formu resetle ve default değerleri set et
     useEffect(() => {
-        if (defaultValues && isOpen) {
-            if (defaultValues.assetType) setValue("assetType", defaultValues.assetType as any);
-            if (defaultValues.assetName) setValue("assetName", defaultValues.assetName);
-            if (defaultValues.transactionType) setValue("transactionType", defaultValues.transactionType);
-            if (defaultValues.pricePerUnit) setValue("pricePerUnit", defaultValues.pricePerUnit);
-            if (defaultValues.quantity) setValue("quantity", defaultValues.quantity);
+        if (isOpen) {
+            // Her açılışta formu sıfırla
+            reset({
+                assetType: (defaultValues?.assetType as any) || undefined,
+                assetName: defaultValues?.assetName || "",
+                transactionType: defaultValues?.transactionType || "BUY",
+                quantity: defaultValues?.quantity || undefined,
+                pricePerUnit: defaultValues?.pricePerUnit || undefined,
+                transactionDate: new Date().toISOString().split("T")[0],
+                currency: "TRY",
+                notes: ""
+            });
+            
+            // Mevcut miktar ve nakit bilgisini set et
+            if (defaultValues?.availableQuantity !== undefined) {
+                setAvailableQuantity(defaultValues.availableQuantity);
+            }
+            if (defaultValues?.availableCash !== undefined) {
+                setAvailableCash(defaultValues.availableCash);
+            }
         }
-    }, [defaultValues, isOpen, setValue]);
+    }, [isOpen, defaultValues, reset]);
+
+    // CASH seçildiğinde birim fiyatı 1 yap
+    useEffect(() => {
+        if (assetType === "CASH") {
+            setValue("pricePerUnit", 1);
+        }
+    }, [assetType, setValue]);
 
     const getAssetNamePlaceholder = (type: string) => {
         switch (type) {
@@ -163,7 +190,7 @@ export function AddTransactionDialog({
             "CRYPTO": "Kripto Para",
             "EUROBOND": "Eurobond",
             "ETF": "ETF",
-            "CASH": "Nakit (TRY)"
+            "CASH": "Nakit"
         };
         return labels[type] || type;
     };
@@ -178,6 +205,27 @@ export function AddTransactionDialog({
         if (!data.assetName) {
             toast.error("Varlık adı girmelisiniz");
             return;
+        }
+        
+        // SATIŞ VALİDASYONU - Portföydeki miktardan fazla satış yapılamaz
+        if (data.transactionType === "SELL" && availableQuantity > 0) {
+            if (data.quantity > availableQuantity) {
+                toast.error("Yetersiz miktar!", {
+                    description: `Portföyünüzde sadece ${availableQuantity} adet var. ${data.quantity} adet satamazsınız.`
+                });
+                return;
+            }
+        }
+        
+        // ALIŞ VALİDASYONU - Kasadaki TL'den fazla alış yapılamaz
+        if (data.transactionType === "BUY" && availableCash > 0) {
+            const totalCost = data.quantity * data.pricePerUnit;
+            if (totalCost > availableCash) {
+                toast.error("Yetersiz bakiye!", {
+                    description: `Kasanızda ${availableCash.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })} var. ${totalCost.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })} tutarında alım yapamazsınız.`
+                });
+                return;
+            }
         }
         
         setIsLoading(true);
@@ -319,7 +367,7 @@ export function AddTransactionDialog({
                                 <SelectItem value="CRYPTO">Kripto Para</SelectItem>
                                 <SelectItem value="EUROBOND">Eurobond</SelectItem>
                                 <SelectItem value="ETF">ETF</SelectItem>
-                                <SelectItem value="CASH">Nakit (TRY)</SelectItem>
+                                <SelectItem value="CASH">Nakit</SelectItem>
                             </SelectContent>
                         </Select>
                         {errors.assetType && (
@@ -334,10 +382,14 @@ export function AddTransactionDialog({
                             <>
                                 <Select 
                                     key={assetType}
+                                    value={showCustomInput ? "custom" : assetName}
                                     onValueChange={(value) => {
                                         if (value === "custom") {
+                                            setShowCustomInput(true);
+                                            setCustomCurrency("");
                                             setValue("assetName", "");
                                         } else {
+                                            setShowCustomInput(false);
                                             setValue("assetName", value);
                                         }
                                     }}
@@ -353,16 +405,33 @@ export function AddTransactionDialog({
                                         ))}
                                     </SelectContent>
                                 </Select>
-                                {assetName === "" && assetType === "CASH" && (
-                                    <Input
-                                        placeholder="Özel para birimi kodu (örn: SAR, AED)"
-                                        value={customCurrency}
-                                        onChange={(e) => {
-                                            const value = e.target.value.toUpperCase();
-                                            setCustomCurrency(value);
-                                            setValue("assetName", `Nakit ${value}`);
-                                        }}
-                                    />
+                                {showCustomInput && assetType === "CASH" && (
+                                    <div className="space-y-2">
+                                        <Input
+                                            placeholder="Özel para birimi kodu (örn: SAR, AED)"
+                                            value={customCurrency}
+                                            onChange={(e) => {
+                                                const value = e.target.value.toUpperCase();
+                                                setCustomCurrency(value);
+                                                if (value.length > 0) {
+                                                    setValue("assetName", `Nakit ${value}`);
+                                                }
+                                            }}
+                                            autoFocus
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
+                                                setShowCustomInput(false);
+                                                setValue("assetName", "");
+                                                setCustomCurrency("");
+                                            }}
+                                        >
+                                            ← Listeye Dön
+                                        </Button>
+                                    </div>
                                 )}
                             </>
                         ) : (
@@ -409,7 +478,19 @@ export function AddTransactionDialog({
                     {/* Quantity and Price */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="quantity">Miktar</Label>
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="quantity">Miktar</Label>
+                                {transactionType === "SELL" && availableQuantity > 0 && (
+                                    <Badge variant="secondary" className="text-xs">
+                                        Mevcut: {availableQuantity}
+                                    </Badge>
+                                )}
+                                {transactionType === "BUY" && availableCash > 0 && (
+                                    <Badge variant="secondary" className="text-xs">
+                                        Bakiye: {availableCash.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })}
+                                    </Badge>
+                                )}
+                            </div>
                             <Input
                                 type="number"
                                 step="any"
