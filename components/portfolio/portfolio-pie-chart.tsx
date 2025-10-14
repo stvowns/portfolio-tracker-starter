@@ -24,15 +24,16 @@ interface PortfolioPieChartProps {
 }
 
 const COLORS = {
-    cash: "#10b981",
-    gold: "#f59e0b",
-    silver: "#94a3b8",
-    stock: "#3b82f6",
-    fund: "#22c55e",
-    crypto: "#a855f7",
-    bond: "#ef4444",
-    eurobond: "#6366f1",
-    etf: "#8b5cf6",
+    cash: "#10b981",           // Yeşil (TL ve dövizler aynı ton)
+    gold: "#f59e0b",            // Amber/Altın sarısı
+    silver: "#94a3b8",          // Gümüş grisi
+    stock: "#ef4444",           // Kırmızı (BIST)
+    international_stock: "#ec4899", // Pembe (Yabancı Hisse)
+    fund: "#8b5cf6",            // Mor (Fonlar)
+    crypto: "#f97316",          // Turuncu (Kripto)
+    bond: "#06b6d4",            // Cyan (Tahvil)
+    eurobond: "#3b82f6",        // Mavi (Eurobond)
+    etf: "#84cc16",             // Lime (ETF)
     default: "#64748b"
 };
 
@@ -123,16 +124,12 @@ export function PortfolioPieChart({
                                     label={CustomLabel}
                                     labelLine={false}
                                 >
-                                    {chartData.map((entry, index) => {
-                                        // Get base asset type for color (e.g., "cash_try" -> "cash")
-                                        const baseType = entry.type.split('_')[0];
-                                        return (
-                                            <Cell 
-                                                key={`cell-${index}`} 
-                                                fill={COLORS[baseType as keyof typeof COLORS] || COLORS.default}
-                                            />
-                                        );
-                                    })}
+                                    {chartData.map((entry, index) => (
+                                        <Cell 
+                                            key={`cell-${index}`} 
+                                            fill={COLORS[entry.type as keyof typeof COLORS] || COLORS.default}
+                                        />
+                                    ))}
                                 </Pie>
                                 <Tooltip content={<CustomTooltip />} />
                             </PieChart>
@@ -141,7 +138,7 @@ export function PortfolioPieChart({
                         {/* Center Text */}
                         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                             <p className="text-xs text-muted-foreground mb-1">Toplam Değer</p>
-                            <p className="text-3xl font-bold">{formatCurrency(totalValue)}</p>
+                            <p className="text-2xl font-bold text-orange-600 dark:text-orange-500">{formatCurrency(totalValue)}</p>
                             <div className="flex items-center gap-2 mt-1">
                                 <span className="text-xs text-muted-foreground">{currency}</span>
                                 {onCurrencyChange && (

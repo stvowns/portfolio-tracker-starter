@@ -51,9 +51,9 @@ interface MCPConfig {
 }
 
 const DEFAULT_CONFIG: MCPConfig = {
-    timeout: 120000,          // 120 seconds (first run can take 60s+ for dependencies)
-    maxRetries: 3,
-    retryDelay: 1000,         // 1 second
+    timeout: 180000,          // 180 seconds (3 minutes - first run can take 60-90s for dependencies)
+    maxRetries: 2,            // Reduced retries since first run is slow
+    retryDelay: 2000,         // 2 seconds
     verbose: process.env.NODE_ENV === 'development'
 };
 
@@ -255,7 +255,13 @@ export class BorsaMCPClient {
      * Search for BIST ticker code
      */
     async searchTicker(query: string): Promise<BorsaMCPResult> {
-        return executeWithRetry(['find_ticker_code', query], this.config);
+        // For ticker search, use even longer timeout (first run + Excel download)
+        const searchConfig = {
+            ...this.config,
+            timeout: 240000, // 4 minutes for first run
+            maxRetries: 1    // No retry for ticker search (too slow)
+        };
+        return executeWithRetry(['find_ticker_code', query], searchConfig);
     }
     
     /**

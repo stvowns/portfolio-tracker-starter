@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real, index } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, index, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { assets } from "./portfolio";
 
 // Price sync status types
@@ -106,9 +106,80 @@ export const priceSyncLogs = sqliteTable("price_sync_logs", {
     };
 });
 
+// Ticker cache table - for autocomplete and search
+export const tickerCache = sqliteTable("ticker_cache", {
+    id: text("id").primaryKey(),
+    assetType: text("asset_type").notNull(), // 'STOCK', 'FUND'
+    symbol: text("symbol").notNull(),
+    name: text("name").notNull(),
+    
+    // BIST specific
+    city: text("city"),
+    
+    // TEFAS specific
+    category: text("category"),
+    
+    // Additional data (JSONB equivalent in SQLite)
+    extraData: text("extra_data"), // JSON string
+    
+    // Metadata
+    lastUpdated: integer("last_updated", { mode: "timestamp_ms" }).notNull(),
+    dataSource: text("data_source").notNull().default("borsa-mcp"),
+    
+    createdAt: integer("created_at", { mode: "timestamp" })
+        .$defaultFn(() => new Date())
+        .notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" })
+        .$defaultFn(() => new Date())
+        .notNull()
+}, (table) => {
+    return {
+        // Unique constraint on asset_type + symbol combination
+        uniqueAssetSymbol: uniqueIndex("ticker_cache_unique_asset_symbol").on(table.assetType, table.symbol),
+        symbolIndex: index("ticker_cache_symbol_idx").on(table.symbol),
+        assetTypeIndex: index("ticker_cache_asset_type_idx").on(table.assetType),
+        nameIndex: index("ticker_cache_name_idx").on(table.name)
+    };
+});
+
+// Ticker sync logs
+export const tickerSyncLogs = sqliteTable("ticker_sync_logs", {
+    id: text("id").primaryKey(),
+    syncType: text("sync_type").notNull(), // 'BIST', 'TEFAS', 'FULL'
+    
+    totalRecords: integer("total_records").notNull().default(0),
+    successfulInserts: integer("successful_inserts").notNull().default(0),
+    failedInserts: integer("failed_inserts").notNull().default(0),
+    
+    startedAt: integer("started_at", { mode: "timestamp_ms" }).notNull(),
+    completedAt: integer("completed_at", { mode: "timestamp_ms" }),
+    durationMs: integer("duration_ms"),
+    
+    status: text("status").notNull(), // 'running', 'completed', 'failed'
+    errorMessage: text("error_message"),
+    
+    triggeredBy: text("triggered_by").notNull(), // 'manual', 'cron', 'api'
+    
+    createdAt: integer("created_at", { mode: "timestamp" })
+        .$defaultFn(() => new Date())
+        .notNull()
+}, (table) => {
+    return {
+        statusIndex: index("ticker_sync_logs_status_idx").on(table.status),
+        startedAtIndex: index("ticker_sync_logs_started_at_idx").on(table.startedAt),
+        syncTypeIndex: index("ticker_sync_logs_sync_type_idx").on(table.syncType)
+    };
+});
+
 // Type exports
 export type PriceCache = typeof priceCache.$inferSelect;
 export type NewPriceCache = typeof priceCache.$inferInsert;
 
 export type PriceSyncLog = typeof priceSyncLogs.$inferSelect;
 export type NewPriceSyncLog = typeof priceSyncLogs.$inferInsert;
+
+export type TickerCache = typeof tickerCache.$inferSelect;
+export type NewTickerCache = typeof tickerCache.$inferInsert;
+
+export type TickerSyncLog = typeof tickerSyncLogs.$inferSelect;
+export type NewTickerSyncLog = typeof tickerSyncLogs.$inferInsert;

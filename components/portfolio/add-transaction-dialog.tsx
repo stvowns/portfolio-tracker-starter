@@ -27,6 +27,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
+import { TickerAutocomplete } from "./ticker-autocomplete";
 
 // Form schema
 const transactionSchema = z.object({
@@ -86,6 +87,7 @@ export function AddTransactionDialog({
     const [isLoading, setIsLoading] = useState(false);
     const [availableQuantity, setAvailableQuantity] = useState<number>(0);
     const [availableCash, setAvailableCash] = useState<number>(0);
+    const [isFetchingPrice, setIsFetchingPrice] = useState(false);
     
     const isOpen = controlledOpen !== undefined ? controlledOpen : internalIsOpen;
     const setIsOpen = onOpenChange || setInternalIsOpen;
@@ -209,6 +211,46 @@ export function AddTransactionDialog({
             "CASH": "Nakit"
         };
         return labels[type] || type;
+    };
+
+    // Fetch price when ticker is selected
+    const handleTickerSelect = async (ticker: { symbol: string; name: string }) => {
+        console.log('[Ticker Select] Selected:', ticker);
+        setValue("assetName", ticker.name);
+        
+        // Fetch current price from Yahoo Finance
+        setIsFetchingPrice(true);
+        try {
+            console.log('[Ticker Select] Fetching price for', ticker.symbol);
+            const response = await fetch(`/api/prices/latest?symbol=${ticker.symbol}&type=${assetType}`);
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('[Ticker Select] Price data:', data);
+                
+                if (data.success && data.data?.currentPrice) {
+                    setValue("pricePerUnit", data.data.currentPrice);
+                    toast.success("Fiyat bilgisi alındı", {
+                        description: `${ticker.symbol}: ${data.data.currentPrice.toFixed(2)} ${data.data.currency}`
+                    });
+                } else {
+                    toast.info("Fiyat bilgisi alınamadı", {
+                        description: "Manuel olarak girin"
+                    });
+                }
+            } else {
+                toast.info("Fiyat bilgisi alınamadı", {
+                    description: "Manuel olarak girin"
+                });
+            }
+        } catch (error) {
+            console.error('[Ticker Select] Price fetch error:', error);
+            toast.info("Fiyat bilgisi alınamadı", {
+                description: "Manuel olarak girin"
+            });
+        } finally {
+            setIsFetchingPrice(false);
+        }
     };
 
     const onSubmit = async (data: TransactionFormData) => {
@@ -395,7 +437,25 @@ export function AddTransactionDialog({
                     {/* Asset Name */}
                     <div className="space-y-2">
                         <Label htmlFor="assetName">Varlık Adı</Label>
-                        {assetOptions.length > 0 ? (
+                        {/* BIST or FUND - Use Ticker Autocomplete */}
+                        {(assetType === "STOCK" || assetType === "FUND") ? (
+                            <>
+                                <TickerAutocomplete
+                                    value={assetName}
+                                    onValueChange={(value) => setValue("assetName", value)}
+                                    onTickerSelect={handleTickerSelect}
+                                    assetType={assetType}
+                                    placeholder={assetType === "STOCK" ? "BIST ticker ara (örn: GARAN)" : "TEFAS fon ara"}
+                                    disabled={isLoading}
+                                />
+                                {isFetchingPrice && (
+                                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                        Fiyat bilgisi getiriliyor...
+                                    </p>
+                                )}
+                            </>
+                        ) : assetOptions.length > 0 ? (
                             <>
                                 <Select 
                                     key={assetType}

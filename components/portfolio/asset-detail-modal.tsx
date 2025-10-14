@@ -252,82 +252,102 @@ export function AssetDetailModal({
 
                 <div className="grid gap-3 sm:gap-4">
                     {/* Summary Cards */}
-                    <div className="grid gap-2 sm:gap-3 grid-cols-2 xl:grid-cols-4">
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-                                <CardTitle className="text-xs font-medium text-muted-foreground">Miktar</CardTitle>
-                                <Wallet className="h-3 w-3 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent className="pb-2 pt-0">
-                                <div className="flex flex-col items-center justify-center min-h-[2.5rem] text-center">
-                                    <div className="text-sm font-bold leading-tight">
-                                        {formatQuantity(netQuantity)}
+                    {asset.assetType.toLowerCase() === 'cash' ? (
+                        // Nakit için basit görünüm
+                        <div className="grid gap-2 sm:gap-3 grid-cols-1">
+                            <Card>
+                                <CardContent className="py-6">
+                                    <div className="flex flex-col items-center justify-center text-center">
+                                        <p className="text-sm text-muted-foreground mb-2">Bakiye</p>
+                                        <div className="text-3xl font-bold">
+                                            {formatCurrency(currentValue)}
+                                        </div>
+                                        <p className="text-xs text-muted-foreground mt-2">
+                                            {formatQuantity(netQuantity)} {asset.symbol || "birim"}
+                                        </p>
                                     </div>
-                                    <p className="text-[10px] text-muted-foreground">
-                                        {asset.symbol || "adet"}
-                                    </p>
-                                </div>
-                            </CardContent>
-                        </Card>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    ) : (
+                        // Diğer varlıklar için detaylı görünüm
+                        <div className="grid gap-2 sm:gap-3 grid-cols-2 xl:grid-cols-4">
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+                                    <CardTitle className="text-xs font-medium text-muted-foreground">Miktar</CardTitle>
+                                    <Wallet className="h-3 w-3 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent className="pb-2 pt-0">
+                                    <div className="flex flex-col items-center justify-center min-h-[2.5rem] text-center">
+                                        <div className="text-sm font-bold leading-tight">
+                                            {formatQuantity(netQuantity)}
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground">
+                                            {asset.symbol || "adet"}
+                                        </p>
+                                    </div>
+                                </CardContent>
+                            </Card>
 
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-                                <CardTitle className="text-xs font-medium text-muted-foreground">Ort. Maliyet</CardTitle>
-                                <TrendingDown className="h-3 w-3 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent className="pb-2 pt-0">
-                                <div className="flex flex-col items-center justify-center min-h-[2.5rem] text-center">
-                                    <div className="text-sm font-bold leading-tight break-all">
-                                        {formatCurrency(averagePrice)}
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+                                    <CardTitle className="text-xs font-medium text-muted-foreground">Ort. Maliyet</CardTitle>
+                                    <TrendingDown className="h-3 w-3 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent className="pb-2 pt-0">
+                                    <div className="flex flex-col items-center justify-center min-h-[2.5rem] text-center">
+                                        <div className="text-sm font-bold leading-tight break-all">
+                                            {formatCurrency(averagePrice)}
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground">
+                                            Birim başı
+                                        </p>
                                     </div>
-                                    <p className="text-[10px] text-muted-foreground">
-                                        Birim başı
-                                    </p>
-                                </div>
-                            </CardContent>
-                        </Card>
+                                </CardContent>
+                            </Card>
 
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-                                <CardTitle className="text-xs font-medium text-muted-foreground">Mevcut Değer</CardTitle>
-                                <TrendingUp className="h-3 w-3 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent className="pb-2 pt-0">
-                                <div className="flex flex-col items-center justify-center min-h-[2.5rem] text-center">
-                                    <div className="text-sm font-bold leading-tight break-all">
-                                        {formatCurrency(currentValue)}
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+                                    <CardTitle className="text-xs font-medium text-muted-foreground">Mevcut Değer</CardTitle>
+                                    <TrendingUp className="h-3 w-3 text-muted-foreground" />
+                                </CardHeader>
+                                <CardContent className="pb-2 pt-0">
+                                    <div className="flex flex-col items-center justify-center min-h-[2.5rem] text-center">
+                                        <div className="text-sm font-bold leading-tight break-all">
+                                            {formatCurrency(currentValue)}
+                                        </div>
+                                        <p className="text-[10px] text-muted-foreground">
+                                            Toplam
+                                        </p>
                                     </div>
-                                    <p className="text-[10px] text-muted-foreground">
-                                        Toplam
-                                    </p>
-                                </div>
-                            </CardContent>
-                        </Card>
+                                </CardContent>
+                            </Card>
 
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
-                                <CardTitle className="text-xs font-medium text-muted-foreground">Kar/Zarar</CardTitle>
-                                {profitLoss >= 0 ? 
-                                    <TrendingUp className="h-3 w-3 text-green-600" /> : 
-                                    <TrendingDown className="h-3 w-3 text-red-600" />
-                                }
-                            </CardHeader>
-                            <CardContent className="pb-2 pt-0">
-                                <div className="flex flex-col items-center justify-center min-h-[2.5rem] text-center">
-                                    <div className={`text-sm font-bold leading-tight break-all ${
-                                        profitLoss >= 0 ? 'text-green-600' : 'text-red-600'
-                                    }`}>
-                                        {formatCurrency(profitLoss)}
+                            <Card>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+                                    <CardTitle className="text-xs font-medium text-muted-foreground">Kar/Zarar</CardTitle>
+                                    {profitLoss >= 0 ? 
+                                        <TrendingUp className="h-3 w-3 text-green-600" /> : 
+                                        <TrendingDown className="h-3 w-3 text-red-600" />
+                                    }
+                                </CardHeader>
+                                <CardContent className="pb-2 pt-0">
+                                    <div className="flex flex-col items-center justify-center min-h-[2.5rem] text-center">
+                                        <div className={`text-sm font-bold leading-tight break-all ${
+                                            profitLoss >= 0 ? 'text-green-600' : 'text-red-600'
+                                        }`}>
+                                            {formatCurrency(profitLoss)}
+                                        </div>
+                                        <p className={`text-[10px] ${
+                                            profitLossPercent >= 0 ? 'text-green-600' : 'text-red-600'
+                                        }`}>
+                                            {profitLossPercent >= 0 ? '+' : ''}{profitLossPercent.toFixed(2)}%
+                                        </p>
                                     </div>
-                                    <p className={`text-[10px] ${
-                                        profitLossPercent >= 0 ? 'text-green-600' : 'text-red-600'
-                                    }`}>
-                                        {profitLossPercent >= 0 ? '+' : ''}{profitLossPercent.toFixed(2)}%
-                                    </p>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    )}
 
                     <Separator className="my-2" />
 

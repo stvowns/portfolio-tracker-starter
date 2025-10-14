@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, TrendingDown, Eye } from "lucide-react";
+import { extractCurrencyFromName, getCurrencySymbol } from "@/lib/utils";
 
 interface AssetCardProps {
     asset: {
@@ -28,14 +29,19 @@ interface AssetCardProps {
 
 export function AssetCard({ asset, currency, onAssetClick, dailyChange }: AssetCardProps) {
     
+    // Nakit varlıkları için kendi para birimini kullan
+    const effectiveCurrency = asset.assetType.toLowerCase() === 'cash' 
+        ? (extractCurrencyFromName(asset.name) || currency)
+        : currency;
+
     const formatCurrency = (amount: number | null | undefined) => {
         if (amount === null || amount === undefined) {
-            return currency === 'TRY' ? '₺0,00' : '$0.00';
+            return effectiveCurrency === 'TRY' ? '₺0,00' : '$0.00';
         }
         
         return new Intl.NumberFormat("tr-TR", {
             style: "currency",
-            currency: currency,
+            currency: effectiveCurrency,
             minimumFractionDigits: 2
         }).format(amount);
     };
@@ -71,7 +77,7 @@ export function AssetCard({ asset, currency, onAssetClick, dailyChange }: AssetC
             className="hover:shadow-sm transition-shadow cursor-pointer"
             onClick={onAssetClick}
         >
-            <CardContent className="p-3">
+            <CardContent className="p-2.5">
                 <div className="grid grid-cols-3 gap-4">
                     {/* Left Column - Name & Current Price */}
                     <div className="flex flex-col gap-1">

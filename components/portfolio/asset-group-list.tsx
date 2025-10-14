@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/collapsible";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { AssetCard } from "./asset-card";
+import { extractCurrencyFromName, getCurrencySymbol } from "@/lib/utils";
 
 interface Asset {
     id: string;
@@ -104,15 +105,7 @@ export function AssetGroupList({
 
         assets.forEach(asset => {
             const type = asset.assetType.toLowerCase();
-            
-            // CASH varlıkları için currency bazlı grupla
-            let groupKey = type;
-            if (type === 'cash' && asset.name) {
-                const currencyMatch = asset.name.match(/Nakit\s*\(?\s*(\w+)\)?/i);
-                if (currencyMatch) {
-                    groupKey = `cash_${currencyMatch[1].toLowerCase()}`;
-                }
-            }
+            const groupKey = type; // Tüm cash varlıkları tek grupta
 
             if (!groups.has(groupKey)) {
                 groups.set(groupKey, []);
@@ -127,17 +120,10 @@ export function AssetGroupList({
                 const totalCost = groupAssets.reduce((sum, a) => sum + a.holdings.netAmount, 0);
                 const profitLoss = totalValue - totalCost;
 
-                // Label belirle
-                let label = getAssetTypeLabel(key.split('_')[0]);
-                if (key.startsWith('cash_')) {
-                    const currencyCode = key.split('_')[1].toUpperCase();
-                    label = `Nakit (${currencyCode})`;
-                }
-
                 return {
                     key,
-                    label,
-                    emoji: getAssetTypeEmoji(key.split('_')[0]),
+                    label: getAssetTypeLabel(key),
+                    emoji: getAssetTypeEmoji(key),
                     assets: groupAssets,
                     totalValue,
                     profitLoss,
@@ -146,8 +132,8 @@ export function AssetGroupList({
             })
             .sort((a, b) => {
                 // CASH önce, sonra değere göre
-                if (a.key.startsWith('cash') && !b.key.startsWith('cash')) return -1;
-                if (!a.key.startsWith('cash') && b.key.startsWith('cash')) return 1;
+                if (a.key === 'cash' && b.key !== 'cash') return -1;
+                if (a.key !== 'cash' && b.key === 'cash') return 1;
                 return b.totalValue - a.totalValue;
             });
     };
@@ -164,9 +150,59 @@ export function AssetGroupList({
         );
     }
 
+    // Nakit varlıklarını formatlayan yardımcı fonksiyon
+    const formatCashAmount = (asset: Asset) => {
+        const currencyCode = extractCurrencyFromName(asset.name) || 'TRY';
+        const symbol = getCurrencySymbol(currencyCode);
+        const amount = asset.holdings.currentValue || asset.holdings.netAmount;
+        
+        return new Intl.NumberFormat("tr-TR", {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2
+        }).format(amount);
+    };
+
     return (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
             {groups.map(group => {
+                // Nakit varlıkları için özel görünüm
+                if (group.key === 'cash') {
+                    return (
+                        <Card key={group.key}>
+                            <CardContent className="p-3">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="text-base">{group.emoji}</div>
+                                    <span className="font-semibold text-sm">{group.label}</span>
+                                    <Badge variant="secondary" className="text-xs h-4 px-1">
+                                        {group.count}
+                                    </Badge>
+                                </div>
+                                <div className="flex gap-2 flex-wrap">
+                                    {group.assets.map(asset => {
+                                        const currencyCode = extractCurrencyFromName(asset.name) || 'TRY';
+                                        const symbol = getCurrencySymbol(currencyCode);
+                                        const amount = formatCashAmount(asset);
+                                        
+                                        return (
+                                            <Card 
+                                                key={asset.id}
+                                                className="hover:shadow-sm transition-shadow cursor-pointer bg-muted/30 flex-1 min-w-0"
+                                                onClick={() => onAssetClick(asset)}
+                                            >
+                                                <CardContent className="p-2 flex items-center justify-center gap-1">
+                                                    <span className="text-xs text-muted-foreground">{currencyCode}:</span>
+                                                    <span className="text-sm font-bold">{symbol}{amount}</span>
+                                                </CardContent>
+                                            </Card>
+                                        );
+                                    })}
+                                </div>
+                            </CardContent>
+                        </Card>
+                    );
+                }
+
+                // Diğer varlık tipleri için akordion görünüm
                 const isOpen = openGroups.has(group.key);
                 const profitColor = group.profitLoss >= 0 ? "text-green-600" : "text-red-600";
 
@@ -214,7 +250,7 @@ export function AssetGroupList({
                                 </Button>
                             </CollapsibleTrigger>
                             <CollapsibleContent>
-                                <CardContent className="pt-0 pb-2 px-2 space-y-2">
+                                <CardContent className="pt-0 pb-1 px-2 space-y-1.5">
                                     {group.assets.map(asset => (
                                         <AssetCard
                                             key={asset.id}
