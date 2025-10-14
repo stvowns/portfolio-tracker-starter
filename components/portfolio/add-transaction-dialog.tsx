@@ -90,7 +90,9 @@ export function AddTransactionDialog({
     });
 
     const assetType = watch("assetType");
+    const assetName = watch("assetName");
     const transactionType = watch("transactionType");
+    const [customCurrency, setCustomCurrency] = useState("");
 
     useEffect(() => {
         if (defaultValues && isOpen) {
@@ -133,7 +135,19 @@ export function AddTransactionDialog({
                     { value: "Gram Gümüş", label: "Gram Gümüş" },
                     { value: "Gümüş Külçe", label: "Gümüş Külçe" },
                     { value: "Gümüş Bilezik", label: "Gümüş Bilezik" },
-                    { value: "Gümüş Para", label: "Gümüş Para" }
+                    { value: "Gümüş Ons", label: "Gümüş Ons" }
+                ];
+            case "CASH":
+                return [
+                    { value: "Nakit TRY", label: "💵 Türk Lirası" },
+                    { value: "Nakit USD", label: "💵 Amerikan Doları" },
+                    { value: "Nakit EUR", label: "💵 Euro" },
+                    { value: "Nakit GBP", label: "💵 İngiliz Sterlini" },
+                    { value: "Nakit CHF", label: "💵 İsviçre Frangı" },
+                    { value: "Nakit JPY", label: "💵 Japon Yeni" },
+                    { value: "Nakit AUD", label: "💵 Avustralya Doları" },
+                    { value: "Nakit CAD", label: "💵 Kanada Doları" },
+                    { value: "custom", label: "✏️ Özel Para Birimi" }
                 ];
             default:
                 return [];
@@ -317,21 +331,40 @@ export function AddTransactionDialog({
                     <div className="space-y-2">
                         <Label htmlFor="assetName">Varlık Adı</Label>
                         {assetOptions.length > 0 ? (
-                            <Select 
-                                key={assetType}
-                                onValueChange={(value) => setValue("assetName", value)}
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder={getAssetNamePlaceholder(assetType)} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {assetOptions.map((option) => (
-                                        <SelectItem key={option.value} value={option.value}>
-                                            {option.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <>
+                                <Select 
+                                    key={assetType}
+                                    onValueChange={(value) => {
+                                        if (value === "custom") {
+                                            setValue("assetName", "");
+                                        } else {
+                                            setValue("assetName", value);
+                                        }
+                                    }}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder={getAssetNamePlaceholder(assetType)} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {assetOptions.map((option) => (
+                                            <SelectItem key={option.value} value={option.value}>
+                                                {option.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {assetName === "" && assetType === "CASH" && (
+                                    <Input
+                                        placeholder="Özel para birimi kodu (örn: SAR, AED)"
+                                        value={customCurrency}
+                                        onChange={(e) => {
+                                            const value = e.target.value.toUpperCase();
+                                            setCustomCurrency(value);
+                                            setValue("assetName", `Nakit ${value}`);
+                                        }}
+                                    />
+                                )}
+                            </>
                         ) : (
                             <Input
                                 {...register("assetName")}
@@ -403,7 +436,7 @@ export function AddTransactionDialog({
 
                     {/* Currency Selection */}
                     <div className="space-y-2">
-                        <Label htmlFor="currency">Para Birimi</Label>
+                        <Label htmlFor="currency">Satın Alma Para Birimi</Label>
                         <Select 
                             onValueChange={(value) => setValue("currency", value as any)}
                             defaultValue="TRY"
@@ -412,11 +445,16 @@ export function AddTransactionDialog({
                                 <SelectValue placeholder="Para birimi seçin" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="TRY">₺ Türk Lirası (TRY)</SelectItem>
-                                <SelectItem value="USD">$ Amerikan Doları (USD)</SelectItem>
-                                <SelectItem value="EUR">€ Euro (EUR)</SelectItem>
+                                <SelectItem value="TRY">₺ Türk Lirası</SelectItem>
+                                <SelectItem value="USD">$ Amerikan Doları</SelectItem>
+                                <SelectItem value="EUR">€ Euro</SelectItem>
                             </SelectContent>
                         </Select>
+                        {assetType === "CASH" && (
+                            <p className="text-xs text-muted-foreground">
+                                💡 Nakit için birim fiyat: 1 yazın (1:1 değer)
+                            </p>
+                        )}
                         {errors.currency && (
                             <p className="text-sm text-red-500">{errors.currency.message}</p>
                         )}

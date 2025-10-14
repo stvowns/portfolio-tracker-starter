@@ -108,25 +108,33 @@ export async function GET(request: NextRequest) {
                 const netAmount = buyAmount - sellAmount;
                 const averagePrice = netQuantity > 0 ? netAmount / netQuantity : 0;
 
-                // Gerçekleşen kar/zarar (Realized P&L) - satış geliri - satış maliyeti (FIFO yaklaşımı)
+                // Gerçekleşen kar/zarar (Realized P&L) - FIFO yaklaşımı
+                const averageBuyPrice = buyQuantity > 0 ? buyAmount / buyQuantity : 0;
                 const realizedProfitLoss = sellQuantity > 0 
-                    ? sellAmount - (sellQuantity * (buyAmount / buyQuantity))
+                    ? sellAmount - (sellQuantity * averageBuyPrice)
                     : 0;
 
-                // Mevcut değer hesapla (eğer current price varsa)
-                const currentValue = asset.currentPrice && netQuantity > 0 
-                    ? parseFloat(asset.currentPrice) * netQuantity 
-                    : null;
+                // Mevcut değer hesapla
+                let currentValue: number;
+                if (netQuantity <= 0) {
+                    currentValue = 0;
+                } else if (asset.currentPrice) {
+                    currentValue = parseFloat(asset.currentPrice) * netQuantity;
+                } else {
+                    // Current price yoksa maliyet değerini kullan
+                    currentValue = netAmount;
+                }
 
-                // Gerçekleşmemiş kar/zarar (Unrealized P&L)
-                const unrealizedProfitLoss = currentValue && netAmount > 0 
+                // Gerçekleşmemiş kar/zarar (Unrealized P&L) - sadece elimizde bulunan varlıklar için
+                const unrealizedProfitLoss = netQuantity > 0 && asset.currentPrice
                     ? currentValue - netAmount 
-                    : null;
+                    : 0;
 
                 // Toplam kar/zarar = gerçekleşen + gerçekleşmemiş
-                const profitLoss = realizedProfitLoss + (unrealizedProfitLoss || 0);
+                const profitLoss = realizedProfitLoss + unrealizedProfitLoss;
                 
-                const profitLossPercent = netAmount > 0 
+                // Kar/zarar yüzdesi - toplam yatırıma göre
+                const profitLossPercent = buyAmount > 0 
                     ? (profitLoss / buyAmount) * 100 
                     : null;
 

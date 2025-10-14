@@ -8,7 +8,8 @@ export const AssetTypeSchema = z.enum([
     "FUND",
     "CRYPTO",
     "EUROBOND",
-    "ETF"
+    "ETF",
+    "CASH"
 ]);
 
 // Transaction türleri için enum

@@ -58,6 +58,7 @@ interface AssetsTableProps {
 // Kategori tanımları
 type AssetCategory = 
     | "ALL"
+    | "CASH"
     | "GOLD"
     | "SILVER"
     | "STOCK_BIST"
@@ -69,6 +70,7 @@ type AssetCategory =
 
 const CATEGORY_CONFIG = {
     ALL: { label: "Tümü", icon: "📊", color: "default" },
+    CASH: { label: "Nakit", icon: "💵", color: "green" },
     GOLD: { label: "Altın", icon: "🪙", color: "yellow" },
     SILVER: { label: "Gümüş", icon: "⚪", color: "gray" },
     STOCK_BIST: { label: "BIST", icon: "🇹🇷", color: "blue" },
@@ -176,6 +178,9 @@ export function AssetsTable({
         const categories: AssetCategory[] = ["ALL"];
         
         switch (asset.assetType) {
+            case "CASH":
+                categories.push("CASH");
+                break;
             case "GOLD":
                 categories.push("GOLD");
                 break;
@@ -361,7 +366,7 @@ export function AssetsTable({
             </CardHeader>
             <CardContent>
                 <Tabs value={activeCategory} onValueChange={(v) => setActiveCategory(v as AssetCategory)} className="w-full">
-                    <TabsList className="grid w-full grid-cols-3 lg:grid-cols-9 mb-4">
+                    <TabsList className="grid w-full grid-cols-3 lg:grid-cols-10 mb-4">
                         {(Object.keys(CATEGORY_CONFIG) as AssetCategory[]).map((category) => {
                             const summary = getCategorySummary(category);
                             const config = CATEGORY_CONFIG[category];

@@ -120,14 +120,17 @@ interface Summary {
     totalCost: number | null;
     totalProfitLoss: number | null;
     totalProfitLossPercent: number | null;
+    totalRealizedPL?: number | null;
+    totalUnrealizedPL?: number | null;
     totalAssets: number;
 }
 
 interface PortfolioDashboardProps {
     currency?: "TRY" | "USD";
+    onCurrencyChange?: () => void;
 }
 
-const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY" }) => {
+const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY", onCurrencyChange }) => {
     const [assets, setAssets] = useState<Asset[]>([]);
     const [summary, setSummary] = useState<Summary | null>(null);
     const [loading, setLoading] = useState(true);
@@ -160,7 +163,9 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
 
     const getAssetTypeLabel = (type: string): string => {
         const labels: Record<string, string> = {
+            'cash': 'Nakit',
             'gold': 'Altın',
+            'silver': 'Gümüş',
             'stock': 'Hisse',
             'fund': 'Fon',
             'crypto': 'Kripto',
@@ -274,7 +279,8 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
         const totalValue = summary?.totalValue || 0;
         
         const emojiMap: Record<string, string> = {
-            'gold': '🏆',
+            'cash': '💵',
+            'gold': '🪙',
             'silver': '🥈',
             'stock': '📈',
             'fund': '💰',
@@ -282,13 +288,12 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
             'bond': '📕',
             'currency': '💵',
             'commodity': '🌾',
-            'real_estate': '🏠',
-            'cash': '💵'
+            'real_estate': '🏠'
         };
         
         assets.forEach(asset => {
             const currentValue = asset.holdings.currentValue || 0;
-            const assetType = asset.assetType.toLowerCase(); // Normalize to lowercase
+            const assetType = asset.assetType.toLowerCase();
             
             if (!typeMap.has(assetType)) {
                 typeMap.set(assetType, { 
@@ -300,12 +305,17 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
             current.value += currentValue;
         });
         
+        // Sort: CASH first, then by percentage
         return Array.from(typeMap.entries()).map(([type, data]) => ({
             type,
             value: data.value,
             percentage: totalValue > 0 ? (data.value / totalValue) * 100 : 0,
             emoji: data.emoji
-        })).sort((a, b) => b.percentage - a.percentage);
+        })).sort((a, b) => {
+            if (a.type === 'cash') return -1;
+            if (b.type === 'cash') return 1;
+            return b.percentage - a.percentage;
+        });
     };
 
     // Performance Details
@@ -487,205 +497,75 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
                 </div>
             )}
 
-            {/* Phase 1: Critical Cards */}
+            {/* Basit Özet - Varlık Dağılımı Badgeleri */}
             {summary && assets.length > 0 && (
-                <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                    {/* Günlük Değişim Kartı */}
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">📅 Günlük Değişim</CardTitle>
-                            <Calendar className={`h-4 w-4 ${profitColor}`} />
-                        </CardHeader>
-                        <CardContent>
-                            <div className={`text-2xl font-bold ${profitColor}`}>
-                                {formatCurrency(summary.totalProfitLoss)}
-                            </div>
-                            <p className={`text-xs ${profitColor}`}>
-                                {formatPercent(summary.totalProfitLossPercent)} anlık değişim
-                            </p>
-                        </CardContent>
-                    </Card>
-
-                    {/* Varlık Dağılımı Kartı */}
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">🏆 Varlık Dağılımı</CardTitle>
-                            <PieChart className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-2">
-                                {assetDistribution.slice(0, 3).map((item, index) => (
-                                    <div key={item.type} className="flex items-center justify-between">
-                                        <span className="text-sm flex items-center gap-1">
-                                            <span>{item.emoji}</span>
-                                            <span>{getAssetTypeLabel(item.type)}</span>
-                                        </span>
-                                        <span className="text-sm font-semibold">
-                                            {item.percentage.toFixed(1)}%
-                                        </span>
-                                    </div>
-                                ))}
-                                {assetDistribution.length === 0 && (
-                                    <p className="text-xs text-muted-foreground">
-                                        Henüz varlık yok
-                                    </p>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Performans Detayı Kartı */}
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">📈 Performans Detayı</CardTitle>
-                            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-3">
-                                {performanceDetails.best && (
-                                    <div className="flex items-start gap-2">
-                                        <Trophy className="h-4 w-4 text-green-600 mt-0.5" />
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">
-                                                En Karlı
-                                            </p>
-                                            <p className="text-sm font-medium truncate">
-                                                {performanceDetails.best.name}
-                                            </p>
-                                            <p className="text-xs text-green-600 font-semibold">
-                                                {formatPercent(performanceDetails.best.holdings.profitLossPercent)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                )}
-                                {performanceDetails.worst && (
-                                    <div className="flex items-start gap-2">
-                                        <AlertTriangle className="h-4 w-4 text-red-600 mt-0.5" />
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">
-                                                En Zararlı
-                                            </p>
-                                            <p className="text-sm font-medium truncate">
-                                                {performanceDetails.worst.name}
-                                            </p>
-                                            <p className="text-xs text-red-600 font-semibold">
-                                                {formatPercent(performanceDetails.worst.holdings.profitLossPercent)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                )}
-                                {!performanceDetails.best && !performanceDetails.worst && (
-                                    <p className="text-xs text-muted-foreground">
-                                        Henüz performans verisi yok
-                                    </p>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
+                <div className="flex flex-wrap gap-2 mb-6">
+                    {assetDistribution.map((item) => (
+                        <div 
+                            key={item.type} 
+                            className="px-4 py-2 rounded-full bg-primary/10 text-primary font-medium text-sm flex items-center gap-2"
+                        >
+                            <span>{item.emoji}</span>
+                            <span>{getAssetTypeLabel(item.type)}: {item.percentage.toFixed(2)}%</span>
+                        </div>
+                    ))}
                 </div>
             )}
 
-            {/* Phase 2: Additional Useful Cards */}
+            {/* Merkez - Toplam Değer */}
             {summary && assets.length > 0 && (
-                <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
-                    {/* Aylık Getiri Kartı */}
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">📅 Bu Ay</CardTitle>
-                            <Target className={`h-4 w-4 ${profitColor}`} />
-                        </CardHeader>
-                        <CardContent>
-                            <div className={`text-xl font-bold ${profitColor}`}>
-                                {formatCurrency(monthlyPerformance.profit)}
+                <Card className="mb-6">
+                    <CardContent className="flex flex-col items-center justify-center py-12">
+                        <div className="text-center mb-4">
+                            <p className="text-muted-foreground text-sm mb-2">Toplam Değer</p>
+                            <p className="text-5xl font-bold">{formatCurrency(summary.totalValue)}</p>
+                            <div className="flex items-center justify-center gap-2 mt-2">
+                                <span className="text-sm text-muted-foreground">{currency}</span>
+                                {onCurrencyChange && (
+                                    <Button variant="ghost" size="sm" onClick={onCurrencyChange} className="h-6 px-2">
+                                        🔄
+                                    </Button>
+                                )}
                             </div>
-                            <p className={`text-xs ${profitColor}`}>
-                                {formatPercent(monthlyPerformance.profitPercent)}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                                {monthlyPerformance.monthName}
-                            </p>
-                        </CardContent>
-                    </Card>
-
-                    {/* Risk Dağılımı Kartı */}
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">🛡️ Risk Dağılımı</CardTitle>
-                            <Shield className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-xs flex items-center gap-1">
-                                        <span className="text-green-600">●</span>
-                                        <span>Düşük Risk</span>
-                                    </span>
-                                    <span className="text-xs font-semibold">
-                                        {riskDistribution.low.toFixed(0)}%
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-xs flex items-center gap-1">
-                                        <span className="text-orange-600">●</span>
-                                        <span>Orta Risk</span>
-                                    </span>
-                                    <span className="text-xs font-semibold">
-                                        {riskDistribution.medium.toFixed(0)}%
-                                    </span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span className="text-xs flex items-center gap-1">
-                                        <span className="text-red-600">●</span>
-                                        <span>Yüksek Risk</span>
-                                    </span>
-                                    <span className="text-xs font-semibold">
-                                        {riskDistribution.high.toFixed(0)}%
-                                    </span>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Toplam İşlem Sayısı Kartı */}
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">💼 Toplam İşlem</CardTitle>
-                            <Activity className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">
-                                {totalTransactions}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                                {assets.length} varlık üzerinde
-                            </p>
-                        </CardContent>
-                    </Card>
-
-                    {/* En Aktif Varlık Kartı */}
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">⚡ En Aktif</CardTitle>
-                            <Zap className="h-4 w-4 text-yellow-600" />
-                        </CardHeader>
-                        <CardContent>
-                            {mostActiveAsset ? (
-                                <>
-                                    <div className="text-lg font-bold truncate">
-                                        {mostActiveAsset.name}
+                        </div>
+                        
+                        {/* Kar/Zarar Özeti */}
+                        <div className="grid grid-cols-2 gap-6 mt-6 w-full max-w-md">
+                            <div className="text-center p-4 rounded-lg bg-muted/30">
+                                <div className="flex items-center justify-center gap-1 mb-1">
+                                    <p className="text-xs text-muted-foreground">Toplam K/Z</p>
+                                    <div className="group relative">
+                                        <span className="text-xs cursor-help">ℹ️</span>
+                                        <div className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-popover text-popover-foreground text-xs rounded-md shadow-lg z-10">
+                                            Gerçekleşen + Gerçekleşmemiş kar/zarar toplamı
+                                        </div>
                                     </div>
-                                    <p className="text-xs text-muted-foreground">
-                                        {mostActiveAsset.holdings.totalTransactions} işlem
-                                    </p>
-                                </>
-                            ) : (
-                                <p className="text-xs text-muted-foreground">
-                                    Henüz işlem yok
+                                </div>
+                                <p className={`text-2xl font-bold ${profitColor}`}>
+                                    {formatCurrency(summary.totalProfitLoss)}
                                 </p>
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
+                                <p className={`text-sm ${profitColor}`}>
+                                    {formatPercent(summary.totalProfitLossPercent)}
+                                </p>
+                            </div>
+                            <div className="text-center p-4 rounded-lg bg-muted/30">
+                                <div className="flex items-center justify-center gap-1 mb-1">
+                                    <p className="text-xs text-muted-foreground">Gerçekleşen K/Z</p>
+                                    <div className="group relative">
+                                        <span className="text-xs cursor-help">ℹ️</span>
+                                        <div className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-popover text-popover-foreground text-xs rounded-md shadow-lg z-10">
+                                            Satışlardan elde edilen gerçek kar/zarar
+                                        </div>
+                                    </div>
+                                </div>
+                                <p className={`text-2xl font-bold ${(summary.totalRealizedPL || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    {formatCurrency(summary.totalRealizedPL || 0)}
+                                </p>
+                                <p className="text-xs text-muted-foreground">💰 Cebinizdeki</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
             )}
 
             {/* Assets Table */}

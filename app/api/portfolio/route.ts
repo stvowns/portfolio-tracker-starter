@@ -74,10 +74,30 @@ export async function GET(request: NextRequest) {
                 const netAmount = buyAmount - sellAmount;
                 const averagePrice = netQuantity > 0 ? netAmount / netQuantity : 0;
                 
-                const currentValue = asset.currentPrice && netQuantity > 0 
-                    ? parseFloat(asset.currentPrice) * netQuantity 
-                    : netAmount;
+                // Gerçekleşen kar/zarar (Realized P&L)
+                const averageBuyPrice = buyQuantity > 0 ? buyAmount / buyQuantity : 0;
+                const realizedProfitLoss = sellQuantity > 0 
+                    ? sellAmount - (sellQuantity * averageBuyPrice)
+                    : 0;
+                
+                // Mevcut değer hesapla
+                let currentValue: number;
+                if (netQuantity <= 0) {
+                    currentValue = 0;
+                } else if (asset.currentPrice) {
+                    currentValue = parseFloat(asset.currentPrice) * netQuantity;
+                } else {
+                    currentValue = netAmount;
+                }
 
+                // Gerçekleşmemiş kar/zarar (Unrealized P&L)
+                const unrealizedProfitLoss = netQuantity > 0 && asset.currentPrice
+                    ? currentValue - netAmount
+                    : 0;
+                
+                // Toplam kar/zarar
+                const totalProfitLoss = realizedProfitLoss + unrealizedProfitLoss;
+                
                 return {
                     assetId: asset.id,
                     assetName: asset.name,
@@ -86,6 +106,9 @@ export async function GET(request: NextRequest) {
                     netAmount,
                     averagePrice,
                     currentValue,
+                    realizedProfitLoss,
+                    unrealizedProfitLoss,
+                    totalProfitLoss,
                     transactionCount: buyTotal[0]?.transactionCount || 0
                 };
             })
@@ -97,6 +120,8 @@ export async function GET(request: NextRequest) {
         // Portföy özetini hesapla
         const totalValue = activeAssets.reduce((sum, asset) => sum + asset.currentValue, 0);
         const totalCost = activeAssets.reduce((sum, asset) => sum + asset.netAmount, 0);
+        const totalRealizedPL = activeAssets.reduce((sum, asset) => sum + asset.realizedProfitLoss, 0);
+        const totalUnrealizedPL = activeAssets.reduce((sum, asset) => sum + asset.unrealizedProfitLoss, 0);
         const totalAssets = activeAssets.length;
 
         return Response.json({
@@ -104,8 +129,10 @@ export async function GET(request: NextRequest) {
             data: {
                 totalValue,
                 totalCost,
-                totalProfitLoss: totalValue - totalCost,
-                totalProfitLossPercent: totalCost > 0 ? ((totalValue - totalCost) / totalCost) * 100 : 0,
+                totalProfitLoss: totalRealizedPL + totalUnrealizedPL,
+                totalProfitLossPercent: totalCost > 0 ? ((totalRealizedPL + totalUnrealizedPL) / totalCost) * 100 : 0,
+                totalRealizedPL,
+                totalUnrealizedPL,
                 totalAssets,
                 currency: "TRY",
                 assets: activeAssets.map(asset => ({

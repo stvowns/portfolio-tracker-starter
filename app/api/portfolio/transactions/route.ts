@@ -175,6 +175,62 @@ export async function POST(request: NextRequest) {
             })
             .returning();
 
+        // Eğer SELL işlemi ise, satıştan elde edilen parayı nakit varlık olarak kaydet
+        if (validatedData.transactionType === "SELL") {
+            const saleProceeds = totalAmount;
+            const cashCurrency = validatedData.currency || "TRY";
+            const cashAssetName = `Nakit (${cashCurrency})`;
+
+            // Nakit varlığını bul veya oluştur
+            const cashAsset = await db
+                .select()
+                .from(assets)
+                .where(and(
+                    eq(assets.userId, session.user.id),
+                    eq(assets.assetType, "CASH"),
+                    eq(assets.currency, cashCurrency)
+                ))
+                .limit(1);
+
+            let cashAssetId: string;
+            
+            if (cashAsset.length === 0) {
+                // Nakit varlığı yoksa oluştur
+                const newCashAsset = await db
+                    .insert(assets)
+                    .values({
+                        id: generateId(),
+                        userId: session.user.id,
+                        assetType: "CASH",
+                        name: cashAssetName,
+                        symbol: cashCurrency,
+                        currency: cashCurrency,
+                        currentPrice: 1.0, // Nakit her zaman 1:1 değerinde
+                    })
+                    .returning();
+                
+                cashAssetId = newCashAsset[0].id;
+            } else {
+                cashAssetId = cashAsset[0].id;
+            }
+
+            // Nakit giriş işlemi oluştur
+            await db
+                .insert(transactions)
+                .values({
+                    id: generateId(),
+                    userId: session.user.id,
+                    assetId: cashAssetId,
+                    transactionType: "BUY",
+                    quantity: saleProceeds,
+                    pricePerUnit: 1.0,
+                    totalAmount: saleProceeds,
+                    transactionDate: new Date(validatedData.transactionDate),
+                    currency: cashCurrency,
+                    notes: `${asset[0].name} satışından elde edilen gelir`,
+                });
+        }
+
         return Response.json({
             success: true,
             message: "İşlem başarıyla eklendi",

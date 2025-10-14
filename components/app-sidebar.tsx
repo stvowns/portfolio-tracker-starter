@@ -44,6 +44,11 @@ const staticData = {
       icon: IconDashboard,
     },
     {
+      title: "Performans",
+      url: "/performance",
+      icon: IconChartBar,
+    },
+    {
       title: "AI Assistant",
       url: "/chat",
       icon: IconFileAi,
@@ -103,33 +108,6 @@ const staticData = {
       url: "#",
       icon: IconSettings,
     },
-    {
-      title: "Get Help",
-      url: "#",
-      icon: IconHelp,
-    },
-    {
-      title: "Search",
-      url: "#",
-      icon: IconSearch,
-    },
-  ],
-  documents: [
-    {
-      name: "Data Library",
-      url: "#",
-      icon: IconDatabase,
-    },
-    {
-      name: "Reports",
-      url: "#",
-      icon: IconReport,
-    },
-    {
-      name: "Word Assistant",
-      url: "#",
-      icon: IconFileWord,
-    },
   ],
 }
 
@@ -172,7 +150,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={staticData.navMain} />
-        <NavDocuments items={staticData.documents} />
         <MiniPriceMonitor />
         <NavSecondary items={staticData.navSecondary} className="mt-auto" />
       </SidebarContent>
