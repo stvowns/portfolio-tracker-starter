@@ -105,11 +105,13 @@ export async function GET(request: NextRequest) {
                 const sellAmount = sellTotal[0]?.totalAmount || 0;
 
                 const netQuantity = buyQuantity - sellQuantity;
-                const netAmount = buyAmount - sellAmount;
+                
+                // Net maliyet = Kalan miktar × Ortalama alış fiyatı
+                const averageBuyPrice = buyQuantity > 0 ? buyAmount / buyQuantity : 0;
+                const netAmount = netQuantity * averageBuyPrice;
                 const averagePrice = netQuantity > 0 ? netAmount / netQuantity : 0;
 
                 // Gerçekleşen kar/zarar (Realized P&L) - FIFO yaklaşımı
-                const averageBuyPrice = buyQuantity > 0 ? buyAmount / buyQuantity : 0;
                 const realizedProfitLoss = sellQuantity > 0 
                     ? sellAmount - (sellQuantity * averageBuyPrice)
                     : 0;

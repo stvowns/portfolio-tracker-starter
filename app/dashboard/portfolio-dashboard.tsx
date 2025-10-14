@@ -1,11 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AssetsTable } from "@/components/portfolio/assets-table";
 import { AssetDetailModal } from "@/components/portfolio/asset-detail-modal";
 import { PortfolioPieChart } from "@/components/portfolio/portfolio-pie-chart";
 import { AssetCard } from "@/components/portfolio/asset-card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -141,7 +139,6 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
     const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
     const [isAssetDetailOpen, setIsAssetDetailOpen] = useState(false);
     const [isResetting, setIsResetting] = useState(false);
-    const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
 
     const USD_TRY_RATE = 35.12; // TODO: Gerçek zamanlı kur çekebiliriz
 
@@ -314,8 +311,8 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
             // CASH varlıkları için currency bazlı ayrım yap
             let mapKey = assetType;
             if (assetType === 'cash' && asset.name) {
-                // "Nakit TRY" -> "cash_try"
-                const currencyMatch = asset.name.match(/Nakit\s*(\w+)/i);
+                // "Nakit (TRY)" veya "Nakit TRY" -> "cash_try"
+                const currencyMatch = asset.name.match(/Nakit\s*\(?\s*(\w+)\)?/i);
                 if (currencyMatch) {
                     mapKey = `cash_${currencyMatch[1].toLowerCase()}`;
                 }
@@ -494,35 +491,7 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
                 </div>
             )}
 
-            {summary && assets.length > 0 && (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    <StatCard
-                        title="Toplam Değer"
-                        value={formatCurrency(summary.totalValue)}
-                        description={`${summary.totalAssets} varlık`}
-                        icon={Wallet}
-                    />
-                    
-                    <StatCard
-                        title="Toplam Maliyet"
-                        value={formatCurrency(summary.totalCost)}
-                        description="Yatırım yapılan tutar"
-                        icon={TrendingDown}
-                    />
-                    
-                    <StatCard
-                        title="Kar/Zarar"
-                        value={formatCurrency(summary.totalProfitLoss)}
-                        description={formatPercent(summary.totalProfitLossPercent)}
-                        icon={isProfit ? TrendingUp : TrendingDown}
-                        iconColor={profitColor}
-                        valueColor={profitColor}
-                        descriptionColor={profitColor}
-                    />
-                    
 
-                </div>
-            )}
 
             {/* Varlık Dağılımı Badgeleri */}
             {summary && assets.length > 0 && (
@@ -553,7 +522,7 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
                 />
             )}
 
-            {/* Assets View - Cards or Table */}
+            {/* Assets View - Cards Only */}
             {assets.length > 0 && (
                 <Card>
                     <CardHeader>
@@ -570,36 +539,20 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
                                     })}
                                 </CardDescription>
                             </div>
-                            <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)} className="w-auto">
-                                <TabsList>
-                                    <TabsTrigger value="cards">Kartlar</TabsTrigger>
-                                    <TabsTrigger value="table">Tablo</TabsTrigger>
-                                </TabsList>
-                            </Tabs>
                         </div>
                     </CardHeader>
                     <CardContent>
-                        {viewMode === "cards" ? (
-                            <div className="space-y-3">
-                                {assets.map((asset) => (
-                                    <AssetCard
-                                        key={asset.id}
-                                        asset={asset}
-                                        currency={currency}
-                                        onAssetClick={() => handleAssetClick(asset)}
-                                        dailyChange={undefined}
-                                    />
-                                ))}
-                            </div>
-                        ) : (
-                            <AssetsTable 
-                                assets={assets}
-                                currency={currency}
-                                onAssetClick={handleAssetClick}
-                                onTransactionAdded={refreshData}
-                                onAssetDeleted={refreshData}
-                            />
-                        )}
+                        <div className="space-y-3">
+                            {assets.map((asset) => (
+                                <AssetCard
+                                    key={asset.id}
+                                    asset={asset}
+                                    currency={currency}
+                                    onAssetClick={() => handleAssetClick(asset)}
+                                    dailyChange={undefined}
+                                />
+                            ))}
+                        </div>
                     </CardContent>
                 </Card>
             )}
