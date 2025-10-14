@@ -249,12 +249,14 @@ export function AssetsTable({
 
     const getAssetTypeLabel = (type: string) => {
         const labels: Record<string, string> = {
+            "CASH": "Nakit",
             "GOLD": "Altın",
             "SILVER": "Gümüş",
             "STOCK": "Hisse Senedi",
             "FUND": "Yatırım Fonu",
             "CRYPTO": "Kripto Para",
-            "EUROBOND": "Eurobond"
+            "EUROBOND": "Eurobond",
+            "ETF": "ETF"
         };
         return labels[type] || type;
     };
@@ -407,7 +409,7 @@ export function AssetsTable({
                                     />
                                 </div>
                             ) : (
-                <div className="rounded-md border">
+                <div className="rounded-md border overflow-x-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -546,3 +548,10 @@ export function AssetsTable({
         </Card>
     );
 }
+
+// Add CSS for responsive table (optional - can add to globals.css)
+// @media (max-width: 640px) {
+//   .assets-table-responsive {
+//     overflow-x: auto;
+//   }
+// }

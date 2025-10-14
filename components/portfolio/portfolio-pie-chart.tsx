@@ -95,9 +95,9 @@ export function PortfolioPieChart({
                 x={x} 
                 y={y} 
                 fill="white" 
-                textAnchor={x > cx ? 'start' : 'end'} 
+                textAnchor="middle" 
                 dominantBaseline="central"
-                className="text-xs font-semibold"
+                className="text-xs font-bold"
             >
                 {`${percentage.toFixed(0)}%`}
             </text>

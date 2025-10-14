@@ -72,52 +72,45 @@ export function AssetCard({ asset, currency, onAssetClick, dailyChange }: AssetC
             onClick={onAssetClick}
         >
             <CardContent className="p-3">
-                <div className="grid grid-cols-3 gap-3 items-center">
-                    {/* Left Section - Name & Current Price */}
-                    <div className="flex flex-col gap-0.5">
-                        <div className="flex items-center gap-2">
-                            <h3 className="font-semibold text-base">{asset.name}</h3>
-                        </div>
-                        <div className="flex items-baseline gap-1.5">
-                            <span className="text-sm font-semibold">
+                <div className="grid grid-cols-3 gap-4">
+                    {/* Left Column - Name & Current Price */}
+                    <div className="flex flex-col gap-1">
+                        <h3 className="font-semibold text-sm">{asset.name}</h3>
+                        <div className="flex items-baseline gap-1">
+                            <span className="text-sm font-medium">
                                 {formatCurrency(currentPrice)}
                             </span>
                             {dailyChange !== undefined && dailyChange !== 0 && (
-                                <span className={`text-xs font-medium ${dailyChangeColor}`}>
+                                <span className={`text-xs ${dailyChangeColor}`}>
                                     {formatPercent(dailyChange)}
                                 </span>
                             )}
                         </div>
                     </div>
 
-                    {/* Middle Section - Quantity & Cost */}
-                    <div className="flex flex-col gap-0.5 text-center">
-                        <div className="flex items-baseline justify-center gap-1">
-                            <p className="text-sm font-semibold">
+                    {/* Middle Column - Quantity & Cost */}
+                    <div className="flex flex-col gap-1">
+                        <div>
+                            <span className="text-sm font-medium">
                                 {formatQuantity(asset.holdings.netQuantity)}
-                            </p>
-                            <span className="text-xs text-muted-foreground">Adet</span>
+                            </span>
+                            <span className="text-xs text-muted-foreground ml-1">Adet</span>
                         </div>
-                        <div className="flex items-baseline justify-center gap-1">
-                            <span className="text-xs text-muted-foreground">Maliyet:</span>
-                            <p className="text-xs font-medium">
+                        <div className="text-xs text-muted-foreground">
+                            Maliyet: <span className="text-foreground font-medium">
                                 {formatCurrency(asset.holdings.averagePrice)}
-                            </p>
+                            </span>
                         </div>
                     </div>
 
-                    {/* Right Section - Total Value & P/L */}
-                    <div className="flex flex-col gap-0.5 text-right">
+                    {/* Right Column - Total Value & P/L */}
+                    <div className="flex flex-col gap-1 text-right">
                         <p className="text-sm font-semibold">
                             {formatCurrency(currentValue)}
                         </p>
-                        <div className="flex items-baseline justify-end gap-1">
-                            <p className={`text-xs font-semibold ${profitColor}`}>
-                                {formatCurrency(profitLoss)}
-                            </p>
-                            <p className={`text-xs font-medium ${profitColor}`}>
-                                {formatPercent(profitLossPercent)}
-                            </p>
+                        <div className={`text-xs ${profitColor}`}>
+                            <span className="font-semibold">{formatCurrency(profitLoss)}</span>
+                            <span className="ml-1">{formatPercent(profitLossPercent)}</span>
                         </div>
                     </div>
                 </div>
