@@ -77,17 +77,17 @@ export function AssetCard({ asset, currency, onAssetClick, dailyChange }: AssetC
             className="hover:shadow-sm transition-shadow cursor-pointer"
             onClick={onAssetClick}
         >
-            <CardContent className="p-2.5">
-                <div className="grid grid-cols-3 gap-4">
+            <CardContent className="p-1.5">
+                <div className="grid grid-cols-3 gap-3">
                     {/* Left Column - Name & Current Price */}
-                    <div className="flex flex-col gap-1">
-                        <h3 className="font-semibold text-sm">{asset.name}</h3>
+                    <div className="flex flex-col gap-0.5">
+                        <h3 className="font-semibold text-xs leading-tight">{asset.name}</h3>
                         <div className="flex items-baseline gap-1">
-                            <span className="text-sm font-medium">
+                            <span className="text-xs font-medium">
                                 {formatCurrency(currentPrice)}
                             </span>
                             {dailyChange !== undefined && dailyChange !== 0 && (
-                                <span className={`text-xs ${dailyChangeColor}`}>
+                                <span className={`text-[10px] ${dailyChangeColor}`}>
                                     {formatPercent(dailyChange)}
                                 </span>
                             )}
@@ -95,9 +95,9 @@ export function AssetCard({ asset, currency, onAssetClick, dailyChange }: AssetC
                     </div>
 
                     {/* Middle Column - Quantity & Cost */}
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-0.5">
                         <div>
-                            <span className="text-sm font-medium">
+                            <span className="text-xs font-medium">
                                 {formatQuantity(asset.holdings.netQuantity)}
                             </span>
                             <span className="text-xs text-muted-foreground ml-1">Adet</span>
