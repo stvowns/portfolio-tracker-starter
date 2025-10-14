@@ -20,6 +20,7 @@ interface PortfolioPieChartProps {
     profitLoss: number;
     profitLossPercent: number;
     realizedPL?: number;
+    formatCurrency: (amount: number | null | undefined) => string;
 }
 
 const COLORS = {
@@ -42,16 +43,9 @@ export function PortfolioPieChart({
     onCurrencyChange,
     profitLoss,
     profitLossPercent,
-    realizedPL = 0
+    realizedPL = 0,
+    formatCurrency
 }: PortfolioPieChartProps) {
-    
-    const formatCurrency = (amount: number) => {
-        return new Intl.NumberFormat("tr-TR", {
-            style: "currency",
-            currency: currency,
-            minimumFractionDigits: 2
-        }).format(amount);
-    };
 
     const formatPercent = (percent: number) => {
         return `${percent >= 0 ? "+" : ""}${percent.toFixed(2)}%`;

@@ -168,12 +168,22 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
     const getAssetTypeLabel = (type: string): string => {
         const labels: Record<string, string> = {
             'cash': 'Nakit',
+            'CASH': 'Nakit',
             'gold': 'Altın',
+            'GOLD': 'Altın',
             'silver': 'Gümüş',
+            'SILVER': 'Gümüş',
             'stock': 'Hisse',
+            'STOCK': 'Hisse Senedi',
             'fund': 'Fon',
+            'FUND': 'Yatırım Fonu',
             'crypto': 'Kripto',
+            'CRYPTO': 'Kripto Para',
             'bond': 'Tahvil',
+            'eurobond': 'Eurobond',
+            'EUROBOND': 'Eurobond',
+            'etf': 'ETF',
+            'ETF': 'ETF',
             'currency': 'Döviz',
             'commodity': 'Emtia',
             'real_estate': 'Gayrimenkul'
@@ -546,6 +556,7 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
                     profitLoss={summary.totalProfitLoss || 0}
                     profitLossPercent={summary.totalProfitLossPercent || 0}
                     realizedPL={summary.totalRealizedPL || 0}
+                    formatCurrency={formatCurrency}
                 />
             )}
 
