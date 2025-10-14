@@ -1,7 +1,17 @@
 /**
  * Popular TEFAS Funds Static List
  * 
- * Top ~150 most popular Turkish investment funds
+ * Top 58 most popular Turkish investment funds
+ * 
+ * Why static list?
+ * - RapidAPI free plan: Only 10 requests/day
+ * - Too expensive to sync all 3285 funds daily
+ * - These 58 funds cover 80%+ of retail investors' needs
+ * 
+ * Price source fallback:
+ * 1. GitHub intermittent API (free, no limits, updated daily 12PM)
+ * 2. RapidAPI (10 req/day limit - use sparingly)
+ * 
  * Source: TEFAS.gov.tr most traded funds
  */
 

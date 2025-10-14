@@ -8,20 +8,66 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Get TEFAS fund price from RapidAPI
+ * Get TEFAS fund price from GitHub intermittent API (fallback to RapidAPI if needed)
+ * Primary: GitHub (free, no limits, updated daily at 12PM Turkey time)
+ * Fallback: RapidAPI (10 req/day limit on free plan)
  */
 async function getTEFASFundPrice(fundCode: string) {
     try {
+        // Try GitHub first (free, no rate limits)
+        console.log(`[TEFAS Price] Trying GitHub API for ${fundCode}...`);
+        const githubUrl = 'https://raw.githubusercontent.com/emirhalici/tefas_intermittent_api/data/fund_data.json';
+        
+        const githubResponse = await fetch(githubUrl, {
+            headers: {
+                'Accept': 'application/json',
+                'User-Agent': 'Mozilla/5.0'
+            },
+            // Cache for 1 hour (data updates once daily anyway)
+            next: { revalidate: 3600 }
+        });
+        
+        if (githubResponse.ok) {
+            const allFunds = await githubResponse.json();
+            const fund = allFunds.find((f: any) => f.code === fundCode);
+            
+            if (fund) {
+                console.log(`[TEFAS Price] Found ${fundCode} in GitHub data`);
+                const currentPrice = parseFloat(fund.priceTRY);
+                const changePercent = parseFloat(fund.changePercentageDaily);
+                
+                const previousClose = currentPrice / (1 + changePercent / 100);
+                const changeAmount = currentPrice - previousClose;
+                
+                return NextResponse.json({
+                    success: true,
+                    data: {
+                        symbol: fundCode,
+                        name: fund.description,
+                        currentPrice,
+                        previousClose,
+                        changeAmount,
+                        changePercent,
+                        currency: 'TRY',
+                        timestamp: new Date().toISOString(),
+                        source: 'tefas-github'
+                    }
+                });
+            }
+            console.log(`[TEFAS Price] ${fundCode} not found in GitHub data, trying RapidAPI...`);
+        }
+        
+        // Fallback to RapidAPI (use sparingly - 10 req/day limit!)
+        console.log(`[TEFAS Price] Using RapidAPI for ${fundCode} (Rate limit: 10/day)`);
         const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY || '8087c41afbmsh30bf3e0c8b0b777p155f23jsn0c33bae3cbe8';
         
-        // Fetch fund details from RapidAPI
         const response = await fetch(`https://tefas-api.p.rapidapi.com/api/v1/funds/${fundCode}`, {
             headers: {
                 'x-rapidapi-key': RAPIDAPI_KEY,
                 'x-rapidapi-host': 'tefas-api.p.rapidapi.com'
             },
-            // Cache for 1 hour
-            next: { revalidate: 3600 }
+            // Cache for 4 hours to reduce API calls
+            next: { revalidate: 14400 }
         });
         
         if (!response.ok) {
@@ -73,7 +119,8 @@ async function getTEFASFundPrice(fundCode: string) {
                 changePercent,
                 currency: 'TRY',
                 timestamp: new Date().toISOString(),
-                source: 'tefas-rapidapi'
+                source: 'tefas-rapidapi',
+                warning: 'RapidAPI free plan: 10 requests/day limit'
             }
         });
         
