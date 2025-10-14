@@ -68,74 +68,54 @@ export function AssetCard({ asset, currency, onAssetClick, dailyChange }: AssetC
 
     return (
         <Card 
-            className="hover:shadow-md transition-shadow cursor-pointer border-l-4"
-            style={{ 
-                borderLeftColor: profitLoss >= 0 ? "#10b981" : "#ef4444" 
-            }}
+            className="hover:shadow-sm transition-shadow cursor-pointer"
             onClick={onAssetClick}
         >
-            <CardContent className="p-4">
-                <div className="grid grid-cols-3 gap-4">
+            <CardContent className="p-3">
+                <div className="grid grid-cols-3 gap-3 items-center">
                     {/* Left Section - Name & Current Price */}
-                    <div className="flex flex-col justify-between">
-                        <div>
-                            <div className="flex items-center gap-2 mb-1">
-                                <h3 className="font-semibold text-lg">{asset.name}</h3>
-                                {asset.symbol && (
-                                    <Badge variant="outline" className="text-xs">
-                                        {asset.symbol}
-                                    </Badge>
-                                )}
-                            </div>
-                            <div className="flex items-baseline gap-2">
-                                <span className="text-2xl font-bold">
-                                    {formatCurrency(currentPrice)}
+                    <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-base">{asset.name}</h3>
+                        </div>
+                        <div className="flex items-baseline gap-1.5">
+                            <span className="text-sm font-semibold">
+                                {formatCurrency(currentPrice)}
+                            </span>
+                            {dailyChange !== undefined && dailyChange !== 0 && (
+                                <span className={`text-xs font-medium ${dailyChangeColor}`}>
+                                    {formatPercent(dailyChange)}
                                 </span>
-                                {dailyChange !== undefined && dailyChange !== 0 && (
-                                    <span className={`text-sm font-medium ${dailyChangeColor}`}>
-                                        {formatPercent(dailyChange)}
-                                    </span>
-                                )}
-                            </div>
+                            )}
                         </div>
                     </div>
 
                     {/* Middle Section - Quantity & Cost */}
-                    <div className="flex flex-col justify-between text-center border-l border-r px-4">
-                        <div>
-                            <p className="text-sm text-muted-foreground mb-1">Adet</p>
-                            <p className="text-xl font-semibold">
+                    <div className="flex flex-col gap-0.5 text-center">
+                        <div className="flex items-baseline justify-center gap-1">
+                            <p className="text-sm font-semibold">
                                 {formatQuantity(asset.holdings.netQuantity)}
                             </p>
+                            <span className="text-xs text-muted-foreground">Adet</span>
                         </div>
-                        <div className="mt-2">
-                            <p className="text-xs text-muted-foreground">Maliyet</p>
-                            <p className="text-sm font-medium">
+                        <div className="flex items-baseline justify-center gap-1">
+                            <span className="text-xs text-muted-foreground">Maliyet:</span>
+                            <p className="text-xs font-medium">
                                 {formatCurrency(asset.holdings.averagePrice)}
                             </p>
                         </div>
                     </div>
 
                     {/* Right Section - Total Value & P/L */}
-                    <div className="flex flex-col justify-between text-right">
-                        <div>
-                            <p className="text-sm text-muted-foreground mb-1">Toplam Değer</p>
-                            <p className="text-2xl font-bold">
-                                {formatCurrency(currentValue)}
+                    <div className="flex flex-col gap-0.5 text-right">
+                        <p className="text-sm font-semibold">
+                            {formatCurrency(currentValue)}
+                        </p>
+                        <div className="flex items-baseline justify-end gap-1">
+                            <p className={`text-xs font-semibold ${profitColor}`}>
+                                {formatCurrency(profitLoss)}
                             </p>
-                        </div>
-                        <div className="mt-2">
-                            <div className="flex items-center justify-end gap-1">
-                                <p className={`text-lg font-semibold ${profitColor}`}>
-                                    {formatCurrency(profitLoss)}
-                                </p>
-                                {profitLoss >= 0 ? (
-                                    <TrendingUp className={`h-4 w-4 ${profitColor}`} />
-                                ) : (
-                                    <TrendingDown className={`h-4 w-4 ${profitColor}`} />
-                                )}
-                            </div>
-                            <p className={`text-sm font-medium ${profitColor}`}>
+                            <p className={`text-xs font-medium ${profitColor}`}>
                                 {formatPercent(profitLossPercent)}
                             </p>
                         </div>
