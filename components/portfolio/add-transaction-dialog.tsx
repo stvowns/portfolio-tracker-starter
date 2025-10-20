@@ -141,12 +141,23 @@ export function AddTransactionDialog({
         }
     }, [isOpen, defaultValues, reset]);
 
-    // CASH seçildiğinde birim fiyatı 1 yap
+    // CASH seçildiğinde birim fiyatı 1 yap, Gram Altın/Gümüş seçildiğinde fiyatı otomatik getir
     useEffect(() => {
         if (assetType === "CASH") {
             setValue("pricePerUnit", 1);
         }
     }, [assetType, setValue]);
+
+    // Altın/Gümüş varlık adı değiştiğinde otomatik fiyat getir
+    useEffect(() => {
+        if ((assetType === "GOLD" || assetType === "SILVER") && assetName) {
+            // Sadece Gram Altın veya Gram Gümüş seçildiğinde otomatik fiyat getir
+            if ((assetType === "GOLD" && assetName === "Gram Altın") ||
+                (assetType === "SILVER" && assetName === "Gram Gümüş")) {
+                fetchMarketPriceForPreciousMetal(assetType);
+            }
+        }
+    }, [assetName, assetType]);
 
     const getAssetNamePlaceholder = (type: string) => {
         switch (type) {
@@ -214,20 +225,59 @@ export function AddTransactionDialog({
     };
 
     // Fetch price when ticker is selected
+    // Fetch gold/silver prices from market prices API
+    const fetchMarketPriceForPreciousMetal = async (assetType: "GOLD" | "SILVER") => {
+        setIsFetchingPrice(true);
+        try {
+            const response = await fetch('/api/test/all-prices');
+            const data = await response.json();
+
+            if (data.success && data.results) {
+                const targetSymbol = assetType === "GOLD" ? "GC=F" : "SI=F";
+                const result = data.results.find((r: any) => r.symbol === targetSymbol);
+
+                if (result?.success && result.data?.gramTRY) {
+                    const price = Math.round(result.data.gramTRY * 100) / 100; // 2 ondalık basamak
+                    setValue("pricePerUnit", price);
+
+                    const metalName = assetType === "GOLD" ? "Altın" : "Gümüş";
+                    toast.success(`${metalName} gram fiyatı alındı`, {
+                        description: `₺${price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/gram`
+                    });
+
+                    return price;
+                }
+            }
+
+            toast.info("Fiyat bilgisi alınamadı", {
+                description: "Manuel olarak girin"
+            });
+        } catch (error) {
+            console.error('[Market Price] Error:', error);
+            toast.info("Fiyat bilgisi alınamadı", {
+                description: "Manuel olarak girin"
+            });
+        } finally {
+            setIsFetchingPrice(false);
+        }
+
+        return null;
+    };
+
     const handleTickerSelect = async (ticker: { symbol: string; name: string }) => {
         console.log('[Ticker Select] Selected:', ticker);
         setValue("assetName", ticker.name);
-        
+
         // Fetch current price from Yahoo Finance
         setIsFetchingPrice(true);
         try {
             console.log('[Ticker Select] Fetching price for', ticker.symbol);
             const response = await fetch(`/api/prices/latest?symbol=${ticker.symbol}&type=${assetType}`);
-            
+
             if (response.ok) {
                 const data = await response.json();
                 console.log('[Ticker Select] Price data:', data);
-                
+
                 if (data.success && data.data?.currentPrice) {
                     setValue("pricePerUnit", data.data.currentPrice);
                     toast.success("Fiyat bilgisi alındı", {
@@ -579,12 +629,21 @@ export function AddTransactionDialog({
                             )}
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="pricePerUnit">Birim Fiyat</Label>
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="pricePerUnit">Birim Fiyat</Label>
+                                {isFetchingPrice && (
+                                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                        Fiyat alınıyor...
+                                    </div>
+                                )}
+                            </div>
                             <Input
                                 type="number"
                                 step="any"
                                 {...register("pricePerUnit", { valueAsNumber: true })}
                                 placeholder="0.00"
+                                disabled={isFetchingPrice}
                             />
                             {errors.pricePerUnit && (
                                 <p className="text-sm text-red-500">{errors.pricePerUnit.message}</p>
