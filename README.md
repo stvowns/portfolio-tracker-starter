@@ -177,7 +177,8 @@ Bu proje MIT lisansı ile lisanslanmıştır.
 ## 🔗 Bağlantılar
 
 - [Live Demo](https://your-demo-url.com)
-- [API Dokümantasyonu](./documentation/api/)
+- [API Dokümantasyonu](./documentation/api/API_DOCUMENTATION.md)
+- [API Endpoint'leri](./documentation/api/)
 - [Mimari Dokümanı](./documentation/architecture/ARCHITECTURE_EXPLAINED.md)
 - [Kullanım Kılavuzu](./KULLANIM_KLAVUZU.md)
 
