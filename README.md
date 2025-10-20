@@ -7,332 +7,186 @@ Modern bir yatırım portföyü takip uygulaması. Altın, gümüş, hisse senet
 - **🏆 Çoklu Varlık Desteği**: Altın (12 farklı çeşit), gümüş, hisse senetleri, yatırım fonları, kripto paralar, eurobondlar
 - **📊 Detaylı Dashboard**: Toplam portföy değeri, kar/zarar, performans metrikleri
 - **🔍 Varlık Detay Modalı**: Varlığa tıklayarak holding detaylarını, işlem geçmişini görüntüleme
-- **➕ Kolay İşlem Yönetimi**: Alış/satım işlemlerini hızlıca ekleme
+- **➕ Kolay İşlem Yönetimi**: Alış/satış işlemlerini hızlıca ekleme
 - **💰 Kar/Zarar Takibi**: Otomatik ortalama maliyet ve kâr/zarar hesaplama
+- **🏦 Canlı Piyasa Fiyatları**: BIST, TEFAS, Yahoo Finance entegrasyonu
+- **🔥 Otomatik Fiyat Doldurma**: Gram altın/gümüş seçiminde güncel fiyatları otomatik getirme
 - **🎨 Modern Arayüz**: Shadcn/ui ile responsive, karanlık mod destekli tasarım
+
+## 📸 Ekran Görüntüleri
+
+### Dashboard
+- Portföy değeri grafiği ve pasta grafiği
+- Varlık dağılımı badges
+- Detaylı varlık listesi
+
+### İşlem Modalı
+- Otomatik fiyat doldurma (Gram Altın/Gümüş)
+- Hızlı ticker seçimi (BIST, TEFAS)
+- Validation ve hata yönetimi
 
 ## 🏗️ Teknoloji Stack
 
 - **Framework:** [Next.js 15](https://nextjs.org/) (App Router with Turbopack)
 - **Language:** TypeScript
-- **Authentication:** [Better Auth](https://better-auth.com/)
-- **Database:** [SQLite](https://sqlite.org/) with [Drizzle ORM](https://orm.drizzle.team/)
-- **Styling:** [Tailwind CSS v4](https://tailwindcss.com/)
-- **UI Components:** [shadcn/ui](https://ui.shadcn.com/) (New York style)
-- **Theme System:** [next-themes](https://github.com/pacocoursey/next-themes)
-- **Icons:** [Lucide React](https://lucide.dev/)
+- **Authentication:** Better Auth
+- **Database:** SQLite (development) / PostgreSQL (production) with Drizzle ORM
+- **Styling:** Tailwind CSS v4
+- **UI Components:** shadcn/ui
+- **Price APIs:** Yahoo Finance, Borsa İstanbul, TEFAS
 
-## Prerequisites
+## 🚀 Hızlı Başlangıç
 
-Before you begin, ensure you have the following:
-- Node.js 18+ installed
-- Docker and Docker Compose (for database setup)
-- Generated project documents from [CodeGuide](https://codeguide.dev/) for best development experience
+### Gereksinimler
+- Node.js 18+
+- npm, yarn veya pnpm
 
-## Getting Started
+### Kurulum
 
-1. **Clone the repository**
+1. **Projeyi klonla**
    ```bash
-   git clone <repository-url>
-   cd codeguide-starter-fullstack
+   git clone https://github.com/stvowns/portfolio-tracker-starter.git
+   cd portfolio-tracker-starter
    ```
 
-2. **Install dependencies**
+2. **Bağımlılıkları yükle**
    ```bash
    npm install
-   # or
-   yarn install
-   # or
-   pnpm install
    ```
 
-3. **Environment Variables Setup**
-   - Copy the `.env.example` file to `.env`:
-     ```bash
-     cp .env.example .env
-     ```
-   - The default values work with Docker setup, modify as needed
-
-4. **Start the development server**
+3. **Geliştirme sunucusunu başlat**
    ```bash
    npm run dev
-   # or
-   yarn dev
-   # or
-   pnpm dev
    ```
 
-5. **Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.**
+4. **Tarayıcıda aç** [http://localhost:3000](http://localhost:3000)
 
-## Configuration
+## 📋 Kullanım
 
-### Option 1: Docker Setup (Recommended)
-1. **Start PostgreSQL with Docker:**
-   ```bash
-   npm run db:up
-   ```
-   This starts PostgreSQL in a Docker container with default credentials.
+### Varlık Ekleme
 
-2. **Push database schema:**
-   ```bash
-   npm run db:push
-   ```
+1. **Yeni İşlem** butonuna tıkla
+2. **Varlık Türü** seç:
+   - **Altın/Gümüş**: Gram Altın veya Gram Gümüş seçildiğinde güncel fiyat otomatik dolar
+   - **BIST**: Hisse kodu yaz (örn: GARAN)
+   - **Yatırım Fonu**: Fon kodu veya adıyla ara
+   - **Kripto**: Bitcoin, Ethereum gibi popüler kriptoları hızlı seç
+3. **İşlem Bilgileri**:
+   - Alış/Satış türü
+   - Miktar ve fiyat (fiyat otomatik doldurulabilir)
+   - Tarih ve notlar
 
-### Option 2: Local Database Setup
-1. Create a PostgreSQL database locally
-2. Update your environment variables in `.env`:
-   ```env
-   DATABASE_URL=postgresql://username:password@localhost:5432/database_name
-   POSTGRES_DB=your_database_name
-   POSTGRES_USER=your_username
-   POSTGRES_PASSWORD=your_password
-   ```
-3. Run database migrations:
-   ```bash
-   npm run db:push
-   ```
+### Özellikler
 
-## Environment Variables
+- **Otomatik Fiyat Çekme**: Gram Altın/Gümüş için güncel piyasa fiyatları
+- **Portföy Analizi**: Anlık değer, kar/zarar, yüzdesel dağılım
+- **İşlem Geçmişi**: Detaylı işlem geçmişi ve ortalama maliyet hesaplama
+- **Çoklu Para Birimi**: TRY, USD, EUR desteği
 
-Create a `.env` file in the root directory with the following variables:
-
-```env
-# Database Configuration (defaults work with Docker)
-DATABASE_URL=postgresql://postgres:postgres@localhost:5433/postgres
-POSTGRES_DB=postgres
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres
-
-# Authentication
-BETTER_AUTH_SECRET=your_secret_key_here
-BETTER_AUTH_URL=http://localhost:3000
-NEXT_PUBLIC_BETTER_AUTH_URL=http://localhost:3000
-```
-
-## Features
-
-- 🔐 Authentication with Better Auth (email/password)
-- 🗄️ PostgreSQL Database with Drizzle ORM
-- 🎨 40+ shadcn/ui components (New York style)
-- 🌙 Dark mode with system preference detection
-- 🚀 App Router with Server Components and Turbopack
-- 📱 Responsive design with TailwindCSS v4
-- 🎯 Type-safe database operations
-- 🔒 Modern authentication patterns
-- 🐳 Full Docker support with multi-stage builds
-- 🚀 Production-ready deployment configuration
-
-## Project Structure
+## 🗂️ Proje Yapısı
 
 ```
-codeguide-starter-fullstack/
-├── app/                        # Next.js app router pages
-│   ├── globals.css            # Global styles with dark mode
-│   ├── layout.tsx             # Root layout with providers
-│   └── page.tsx               # Main page
-├── components/                # React components
-│   └── ui/                    # shadcn/ui components (40+)
-├── db/                        # Database configuration
-│   ├── index.ts              # Database connection
-│   └── schema/               # Database schemas
-├── docker/                    # Docker configuration
-│   └── postgres/             # PostgreSQL initialization
-├── hooks/                     # Custom React hooks
-├── lib/                       # Utility functions
-│   ├── auth.ts               # Better Auth configuration
-│   └── utils.ts              # General utilities
-├── auth-schema.ts            # Authentication schema
-├── docker-compose.yml        # Docker services configuration
-├── Dockerfile                # Application container definition
-├── drizzle.config.ts         # Drizzle configuration
-└── components.json           # shadcn/ui configuration
+portfolio-tracker-starter/
+├── app/                        # Next.js sayfaları
+│   ├── dashboard/             # Ana dashboard sayfası
+│   ├── api/                   # API route'ları
+│   └── layout.tsx             # Ana layout
+├── components/                # React bileşenleri
+│   ├── portfolio/             # Portföy bileşenleri
+│   │   ├── add-transaction-dialog.tsx
+│   │   ├── asset-detail-modal.tsx
+│   │   └── portfolio-pie-chart.tsx
+│   └── ui/                    # shadcn/ui bileşenleri
+├── lib/                       # Servis ve yardımcı dosyalar
+│   ├── services/              # Veri servisleri
+│   └── utils.ts               # Yardımcı fonksiyonlar
+├── documentation/             # Proje dokümantasyonu
+│   ├── api/                   # API dokümantasyonu
+│   ├── architecture/          # Mimari dokümanlar
+│   └── guides/                # Kullanım rehberleri
+└── archive/                   # Eski dokümanlar
 ```
 
-## Database Integration
+## 🔧 Geliştirme
 
-This starter includes modern database integration:
-
-- **Drizzle ORM** for type-safe database operations
-- **PostgreSQL** as the database provider
-- **Better Auth** integration with Drizzle adapter
-- **Database migrations** with Drizzle Kit
-
-## Development Commands
-
-### Application
-- `npm run dev` - Start development server with Turbopack
-- `npm run build` - Build for production with Turbopack
-- `npm start` - Start production server
-- `npm run lint` - Run ESLint
-
-### Database
-- `npm run db:up` - Start PostgreSQL in Docker
-- `npm run db:down` - Stop PostgreSQL container
-- `npm run db:dev` - Start development PostgreSQL (port 5433)
-- `npm run db:dev-down` - Stop development PostgreSQL
-- `npm run db:push` - Push schema changes to database
-- `npm run db:generate` - Generate Drizzle migration files
-- `npm run db:studio` - Open Drizzle Studio (database GUI)
-- `npm run db:reset` - Reset database (drop all tables and recreate)
-
-### Styling with shadcn/ui
-- Pre-configured with 40+ shadcn/ui components in New York style
-- Components are fully customizable and use CSS variables for theming
-- Automatic dark mode support with next-themes integration
-- Add new components: `npx shadcn@latest add [component-name]`
-
-### Docker
-- `npm run docker:build` - Build application Docker image
-- `npm run docker:up` - Start full application stack (app + database)
-- `npm run docker:down` - Stop all containers
-- `npm run docker:logs` - View container logs
-- `npm run docker:clean` - Stop containers and clean up volumes
-
-## Docker Development
-
-### Quick Start with Docker
-```bash
-# Start the entire stack (recommended for new users)
-npm run docker:up
-
-# View logs
-npm run docker:logs
-
-# Stop everything
-npm run docker:down
-```
-
-### Development Workflow
-```bash
-# Option 1: Database only (develop app locally)
-npm run db:up          # Start PostgreSQL
-npm run dev            # Start Next.js development server
-
-# Option 2: Full Docker stack
-npm run docker:up      # Start both app and database
-```
-
-### Docker Services
-
-The `docker-compose.yml` includes:
-
-- **postgres**: Main PostgreSQL database (port 5432)
-- **postgres-dev**: Development database (port 5433) - use `--profile dev`
-- **app**: Next.js application container (port 3000)
-
-### Docker Profiles
+### Komutlar
 
 ```bash
-# Start development database on port 5433
-docker-compose --profile dev up postgres-dev -d
+# Geliştirme
+npm run dev              # Geliştirme sunucusu
+npm run build            # Production build
+npm run start            # Production sunucusu
 
-# Or use the npm script
-npm run db:dev
+# Veritabanı
+npm run db:up            # PostgreSQL'i Docker'da başlat
+npm run db:down          # PostgreSQL'i durdur
+npm run db:push          # Schema değişikliklerini push et
+npm run db:studio        # Drizzle Studio (veritabanı GUI)
+npm run db:reset         # Veritabanını sıfırla
+
+# Diğer
+npm run lint             # ESLint çalıştır
+npm run docker:up        # Tüm stack'i Docker'da başlat
 ```
 
-## Deployment
+### Price API Entegrasyonu
 
-### Production Deployment
+Farklı kaynaklardan fiyat bilgisi çekme:
 
-#### Option 1: Docker Compose (VPS/Server)
+- **BIST**: `/api/prices/latest?symbol=GARAN&type=STOCK`
+- **TEFAS**: Otomatik senkronizasyon (3285+ fon)
+- **Yahoo Finance**: Kripto ve uluslararası varlıklar
+- **Piyasa Fiyatları**: `/api/test/all-prices` (Altın/Gümüş gram)
 
-1. **Clone and setup on your server:**
-   ```bash
-   git clone <your-repo>
-   cd codeguide-starter-fullstack
-   cp .env.example .env
-   ```
+## 📊 API Endpoints
 
-2. **Configure environment variables:**
-   ```bash
-   # Edit .env with production values
-   DATABASE_URL=postgresql://postgres:your_secure_password@postgres:5432/postgres
-   POSTGRES_DB=postgres
-   POSTGRES_USER=postgres
-   POSTGRES_PASSWORD=your_secure_password
-   BETTER_AUTH_SECRET=your-very-secure-secret-key
-   BETTER_AUTH_URL=https://yourdomain.com
-   NEXT_PUBLIC_BETTER_AUTH_URL=https://yourdomain.com
-   ```
-
-3. **Deploy:**
-   ```bash
-   npm run docker:up
-   ```
-
-#### Option 2: Container Registry (AWS/GCP/Azure)
-
-1. **Build and push image:**
-   ```bash
-   # Build the image
-   docker build -t your-registry/codeguide-starter-fullstack:latest .
-   
-   # Push to registry
-   docker push your-registry/codeguide-starter-fullstack:latest
-   ```
-
-2. **Deploy using your cloud provider's container service**
-
-#### Option 3: Vercel + External Database
-
-1. **Deploy to Vercel:**
-   ```bash
-   npm i -g vercel
-   vercel
-   ```
-
-2. **Add environment variables in Vercel dashboard:**
-   - `DATABASE_URL`: Your managed PostgreSQL connection string
-   - `BETTER_AUTH_SECRET`: Generate a secure secret
-   - `BETTER_AUTH_URL`: Your Vercel deployment URL
-
-3. **Setup database:**
-   ```bash
-   # Push schema to your managed database
-   npm run db:push
-   ```
-
-### Environment Variables for Production
-
-```env
-# Required for production
-DATABASE_URL=postgresql://user:password@host:port/database
-BETTER_AUTH_SECRET=generate-a-very-secure-32-character-key
-BETTER_AUTH_URL=https://yourdomain.com
-
-# Optional optimizations
-NODE_ENV=production
+### Fiyat Bilgisi
+```typescript
+GET /api/prices/latest?symbol={symbol}&type={type}
+{
+  success: true,
+  data: {
+    currentPrice: number,
+    currency: string,
+    timestamp: string
+  }
+}
 ```
 
-### Production Considerations
-
-- **Database**: Use managed PostgreSQL (AWS RDS, Google Cloud SQL, etc.)
-- **Security**: Generate strong secrets, use HTTPS
-- **Performance**: Enable Next.js output: 'standalone' for smaller containers
-- **Monitoring**: Add logging and health checks
-- **Backup**: Regular database backups
-- **SSL**: Terminate SSL at load balancer or reverse proxy
-
-### Health Checks
-
-The application includes basic health checks. You can extend them:
-
-```dockerfile
-# In Dockerfile, add health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:3000/api/health || exit 1
+### Portföy İşlemleri
+```typescript
+GET /api/portfolio/assets          # Varlıkları listele
+POST /api/portfolio/transactions   # İşlem ekle
+GET /api/portfolio/summary         # Portföy özeti
 ```
 
-## AI Coding Agent Integration
+## 🤝 Katkı
 
-This starter is optimized for AI coding agents:
+Katkılarınızı bekliyoruz! Lütfen Pull Request göndermeden önce:
 
-- **Clear file structure** and naming conventions
-- **TypeScript integration** with proper type definitions
-- **Modern authentication** patterns
-- **Database schema** examples
+1. Projeyi fork edin
+2. Feature branch oluşturun (`git checkout -b feature/amazing-feature`)
+3. Değişikliklerinizi commit edin (`git commit -m 'Add amazing feature'`)
+4. Branch'inize push edin (`git push origin feature/amazing-feature`)
+5. Pull Request açın
 
-## Contributing
+## 📄 Lisans
 
-Contributions are welcome! Please feel free to submit a Pull Request.
-# codeguide-starter-fullstack
+Bu proje MIT lisansı ile lisanslanmıştır.
+
+## 🔗 Bağlantılar
+
+- [Live Demo](https://your-demo-url.com)
+- [API Dokümantasyonu](./documentation/api/)
+- [Mimari Dokümanı](./documentation/architecture/ARCHITECTURE_EXPLAINED.md)
+- [Kullanım Kılavuzu](./KULLANIM_KLAVUZU.md)
+
+## 📞 İletişim
+
+Sorularınız ve önerileriniz için:
+- GitHub Issues üzerinden issue açın
+- [stvowns@gmail.com](mailto:stvowns@gmail.com)
+
+---
+
+**⭐ Eğer projeyi beğendiyseniz lütfen star vermeyi unutmayın!**
