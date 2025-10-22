@@ -8,7 +8,7 @@
 import { db } from '@/db';
 import { assets } from '@/db/schema/portfolio';
 import { priceCache, priceSyncLogs, PRICE_SYNC_STATUS, SYNC_LOG_STATUS } from '@/db/schema/price-cache';
-import { borsaMCPClient } from './borsa-mcp-client';
+import { bistService } from './bist-service';
 import { eq, and, inArray } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 

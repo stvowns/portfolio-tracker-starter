@@ -7,55 +7,12 @@ import { db } from '../db';
 import { tickerCache, tickerSyncLogs } from '../db/schema/price-cache';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
-import * as XLSX from 'xlsx';
-
-const KAP_EXCEL_URL = 'https://www.kap.org.tr/tr/api/company/generic/excel/IGS/A';
+import { bistService } from '../lib/services/bist-service';
 
 async function fetchBISTTickers() {
-    console.log('📥 Fetching BIST companies from KAP...');
-    
-    const response = await fetch(KAP_EXCEL_URL, {
-        headers: {
-            'Accept': '*/*',
-            'Accept-Language': 'tr',
-            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36',
-            'Referer': 'https://www.kap.org.tr/tr/bist-sirketler'
-        }
-    });
-    
-    if (!response.ok) {
-        throw new Error(`KAP API returned ${response.status}`);
-    }
-    
-    const buffer = await response.arrayBuffer();
-    const workbook = XLSX.read(buffer, { type: 'array' });
-    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-    const data = XLSX.utils.sheet_to_json<any>(firstSheet, { header: 1 });
-    
-    const companies: Array<{ ticker: string; name: string; city?: string }> = [];
-    
-    for (let i = 1; i < data.length; i++) {
-        const row = data[i];
-        if (!row || row.length < 3) continue;
-        
-        const tickerField = String(row[0] || '').trim();
-        const name = String(row[1] || '').trim();
-        const city = String(row[2] || '').trim();
-        
-        if (!tickerField || !name || tickerField === 'BIST KODU') continue;
-        
-        if (tickerField.includes(',')) {
-            const tickers = tickerField.split(',').map(t => t.trim());
-            for (const ticker of tickers) {
-                if (ticker) {
-                    companies.push({ ticker, name, city: city || undefined });
-                }
-            }
-        } else {
-            companies.push({ ticker: tickerField, name, city: city || undefined });
-        }
-    }
-    
+    console.log('📥 Fetching BIST companies from BIST Service...');
+
+    const companies = await bistService.fetchCompanies();
     console.log(`✅ Found ${companies.length} companies`);
     return companies;
 }
@@ -93,9 +50,9 @@ async function syncTickers() {
                 await db.insert(tickerCache).values({
                     id: randomUUID(),
                     assetType: 'STOCK',
-                    symbol: company.ticker,
-                    name: company.name,
-                    city: company.city || null,
+                    symbol: company.ticker_kodu,
+                    name: company.sirket_adi,
+                    city: company.sehir || null,
                     category: null,
                     extraData: null,
                     lastUpdated: now,
@@ -104,12 +61,12 @@ async function syncTickers() {
                     updatedAt: now
                 });
                 successful++;
-                
+
                 if (successful % 100 === 0) {
                     console.log(`  ✓ Inserted ${successful}/${companies.length}`);
                 }
             } catch (error) {
-                console.error(`  ✗ Failed: ${company.ticker}`, error);
+                console.error(`  ✗ Failed: ${company.ticker_kodu}`, error);
                 failed++;
             }
         }

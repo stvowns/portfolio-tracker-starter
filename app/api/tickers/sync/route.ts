@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
         }
         
         if (validated.sync_type === 'TEFAS' || validated.sync_type === 'FULL') {
-            scriptsToRun.push({ type: 'TEFAS', script: 'scripts/sync-tefas-funds.ts' });
+            scriptsToRun.push({ type: 'TEFAS', script: 'scripts/sync-tefas-data.ts' });
         }
         
         // Execute sync scripts

@@ -1,78 +1,356 @@
 /**
  * Latest Price API
- * 
+ *
  * GET /api/prices/latest?symbol=GARAN&type=STOCK
- * Get current/latest price for a ticker from Yahoo Finance
+ * GET /api/prices/latest?symbol=YKT&type=FUND
+ * GET /api/prices/latest?symbol=GOLD&type=COMMODITY
+ * GET /api/prices/latest?symbol=USDTRY&type=CURRENCY
+ *
+ * Supports: STOCK, FUND, COMMODITY, CURRENCY, CRYPTO
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Format date for TEFAS API (DD.MM.YYYY)
- */
-function formatDateForTEFAS(date: Date): string {
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}.${month}.${year}`;
-}
-
-/**
- * Get TEFAS fund price from official TEFAS API
- * Falls back to GitHub API if official API is blocked
+ * Get TEFAS fund price from TEFAS service
  */
 async function getTEFASFundPrice(fundCode: string) {
     try {
-        console.log(`[TEFAS Price] Fetching from official TEFAS API for ${fundCode} using new crawler...`);
-
-        // Import and use the new TEFAS crawler
-        const { TEFASCrawler } = await import('../../../../lib/services/tefas-crawler');
-        const crawler = new TEFASCrawler();
-
-        // Get today's data
-        const funds = await crawler.fetch(new Date(), new Date(), fundCode);
-
-        if (funds.length === 0) {
-            throw new Error(`Fund ${fundCode} not found or no price data available for today`);
-        }
-
-        // Get the latest price data
-        const latestData = funds[funds.length - 1];
-        const currentPrice = latestData.price;
-
-        // Get previous day's data for comparison
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const previousFunds = await crawler.fetch(yesterday, yesterday, fundCode);
-
-        let previousClose = currentPrice;
-        let changePercent = 0;
-
-        if (previousFunds.length > 0) {
-            previousClose = previousFunds[previousFunds.length - 1].price;
-            changePercent = previousClose ? ((currentPrice - previousClose) / previousClose) * 100 : 0;
-        }
-
-        const changeAmount = currentPrice - previousClose;
+        console.log(`[TEFAS Price] Fetching price for ${fundCode}...`);
+        const { tefasService } = await import('../../../../lib/services/tefas-service');
+        const fundPrice = await tefasService.fetchFundPrice(fundCode);
 
         return NextResponse.json({
             success: true,
-            data: {
-                symbol: fundCode,
-                name: latestData.name,
-                currentPrice,
-                previousClose,
-                changeAmount,
-                changePercent,
-                currency: 'TRY',
-                timestamp: new Date().toISOString(),
-                source: 'tefas-official-v2'
-            }
+            data: fundPrice
         });
 
     } catch (error) {
         console.error('[TEFAS Price API] Error:', error);
+        return NextResponse.json({
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        }, { status: 500 });
+    }
+}
 
+/**
+ * Get BIST stock price from BIST service
+ */
+async function getBISTStockPrice(symbol: string) {
+    try {
+        console.log(`[BIST Price] Fetching price for ${symbol}...`);
+        const { bistService } = await import('../../../../lib/services/bist-service');
+        const stockPrice = await bistService.fetchStockPrice(symbol);
+
+        return NextResponse.json({
+            success: true,
+            data: stockPrice
+        });
+
+    } catch (error) {
+        console.error('[BIST Price API] Error:', error);
+        return NextResponse.json({
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        }, { status: 500 });
+    }
+}
+
+/**
+ * Get Gold price from Yahoo Finance
+ */
+async function getGoldPrice() {
+    try {
+        console.log('[Gold Price] Fetching gold price...');
+
+        // Fetch USD/TRY rate first
+        let usdTryRate = 34; // Fallback
+        try {
+            const usdTryUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/TRY=X?interval=1d&range=1d';
+            const usdTryResponse = await fetch(usdTryUrl);
+            const usdTryData = await usdTryResponse.json();
+
+            if (usdTryData?.chart?.result?.[0]?.meta?.regularMarketPrice) {
+                usdTryRate = usdTryData.chart.result[0].meta.regularMarketPrice;
+            }
+        } catch (error) {
+            console.warn('Could not fetch USD/TRY rate, using fallback:', error);
+        }
+
+        // Fetch gold price
+        const url = 'https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=1d&range=1d';
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (!data?.chart?.result?.[0]) {
+            throw new Error('Invalid response structure from Yahoo Finance');
+        }
+
+        const result = data.chart.result[0];
+        const meta = result.meta;
+
+        const currentPriceUSD = meta.regularMarketPrice;
+        const previousCloseUSD = meta.chartPreviousClose;
+        const changePercent = ((currentPriceUSD - previousCloseUSD) / previousCloseUSD) * 100;
+
+        // Convert to TRY (1 ounce = 31.1035 grams)
+        const GRAMS_PER_OUNCE = 31.1035;
+        const gramPriceTRY = (currentPriceUSD / GRAMS_PER_OUNCE) * usdTryRate;
+        const previousGramTRY = (previousCloseUSD / GRAMS_PER_OUNCE) * usdTryRate;
+
+        return NextResponse.json({
+            success: true,
+            data: {
+                symbol: 'GOLD',
+                name: 'Altın (Gram)',
+                currentPrice: gramPriceTRY,
+                previousClose: previousGramTRY,
+                changeAmount: gramPriceTRY - previousGramTRY,
+                changePercent,
+                currency: 'TRY',
+                timestamp: new Date().toISOString(),
+                source: 'yahoo-finance',
+                metadata: {
+                    ounceUSD: currentPriceUSD,
+                    usdTryRate: usdTryRate,
+                    gramsPerOunce: GRAMS_PER_OUNCE
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('[Gold Price API] Error:', error);
+        return NextResponse.json({
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        }, { status: 500 });
+    }
+}
+
+/**
+ * Get Silver price from Yahoo Finance
+ */
+async function getSilverPrice() {
+    try {
+        console.log('[Silver Price] Fetching silver price...');
+
+        // Fetch USD/TRY rate first
+        let usdTryRate = 34; // Fallback
+        try {
+            const usdTryUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/TRY=X?interval=1d&range=1d';
+            const usdTryResponse = await fetch(usdTryUrl);
+            const usdTryData = await usdTryResponse.json();
+
+            if (usdTryData?.chart?.result?.[0]?.meta?.regularMarketPrice) {
+                usdTryRate = usdTryData.chart.result[0].meta.regularMarketPrice;
+            }
+        } catch (error) {
+            console.warn('Could not fetch USD/TRY rate, using fallback:', error);
+        }
+
+        // Fetch silver price
+        const url = 'https://query1.finance.yahoo.com/v8/finance/chart/SI=F?interval=1d&range=1d';
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (!data?.chart?.result?.[0]) {
+            throw new Error('Invalid response structure from Yahoo Finance');
+        }
+
+        const result = data.chart.result[0];
+        const meta = result.meta;
+
+        const currentPriceUSD = meta.regularMarketPrice;
+        const previousCloseUSD = meta.chartPreviousClose;
+        const changePercent = ((currentPriceUSD - previousCloseUSD) / previousCloseUSD) * 100;
+
+        // Convert to TRY (1 ounce = 31.1035 grams)
+        const GRAMS_PER_OUNCE = 31.1035;
+        const gramPriceTRY = (currentPriceUSD / GRAMS_PER_OUNCE) * usdTryRate;
+        const previousGramTRY = (previousCloseUSD / GRAMS_PER_OUNCE) * usdTryRate;
+
+        return NextResponse.json({
+            success: true,
+            data: {
+                symbol: 'SILVER',
+                name: 'Gümüş (Gram)',
+                currentPrice: gramPriceTRY,
+                previousClose: previousGramTRY,
+                changeAmount: gramPriceTRY - previousGramTRY,
+                changePercent,
+                currency: 'TRY',
+                timestamp: new Date().toISOString(),
+                source: 'yahoo-finance',
+                metadata: {
+                    ounceUSD: currentPriceUSD,
+                    usdTryRate: usdTryRate,
+                    gramsPerOunce: GRAMS_PER_OUNCE
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('[Silver Price API] Error:', error);
+        return NextResponse.json({
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        }, { status: 500 });
+    }
+}
+
+/**
+ * Get Currency price from Yahoo Finance
+ */
+async function getCurrencyPrice(symbol: string) {
+    try {
+        console.log(`[Currency Price] Fetching price for ${symbol}...`);
+
+        let yahooSymbol = symbol;
+        let currency = 'TRY';
+        let name = '';
+
+        // Handle common currency pairs
+        switch (symbol.toUpperCase()) {
+            case 'USDTRY':
+                yahooSymbol = 'TRY=X';
+                name = 'ABD Doları / Türk Lirası';
+                break;
+            case 'EURTRY':
+                yahooSymbol = 'EURTRY=X';
+                name = 'Euro / Türk Lirası';
+                break;
+            case 'GBPTRY':
+                yahooSymbol = 'GBPTRY=X';
+                name = 'İngiliz Sterlini / Türk Lirası';
+                break;
+            default:
+                throw new Error(`Unsupported currency pair: ${symbol}`);
+        }
+
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=1d`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (!data?.chart?.result?.[0]) {
+            throw new Error('Invalid response structure from Yahoo Finance');
+        }
+
+        const result = data.chart.result[0];
+        const meta = result.meta;
+
+        const currentPrice = meta.regularMarketPrice;
+        const previousClose = meta.chartPreviousClose;
+        const changeAmount = currentPrice - previousClose;
+        const changePercent = (changeAmount / previousClose) * 100;
+
+        return NextResponse.json({
+            success: true,
+            data: {
+                symbol: symbol.toUpperCase(),
+                name,
+                currentPrice,
+                previousClose,
+                changeAmount,
+                changePercent,
+                currency,
+                timestamp: new Date().toISOString(),
+                source: 'yahoo-finance'
+            }
+        });
+
+    } catch (error) {
+        console.error('[Currency Price API] Error:', error);
+        return NextResponse.json({
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+        }, { status: 500 });
+    }
+}
+
+/**
+ * Get Crypto price from Yahoo Finance
+ */
+async function getCryptoPrice(symbol: string) {
+    try {
+        console.log(`[Crypto Price] Fetching price for ${symbol}...`);
+
+        let yahooSymbol = symbol;
+        let name = '';
+
+        // Handle common crypto symbols
+        switch (symbol.toUpperCase()) {
+            case 'BTC':
+            case 'BTCUSD':
+                yahooSymbol = 'BTC-USD';
+                name = 'Bitcoin';
+                break;
+            case 'ETH':
+            case 'ETHUSD':
+                yahooSymbol = 'ETH-USD';
+                name = 'Ethereum';
+                break;
+            default:
+                // If symbol already has -USD format, use as is
+                if (!symbol.includes('-')) {
+                    yahooSymbol = `${symbol}-USD`;
+                }
+                name = symbol.toUpperCase();
+        }
+
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=1d`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (!data?.chart?.result?.[0]) {
+            throw new Error('Invalid response structure from Yahoo Finance');
+        }
+
+        const result = data.chart.result[0];
+        const meta = result.meta;
+
+        const currentPriceUSD = meta.regularMarketPrice;
+        const previousCloseUSD = meta.chartPreviousClose;
+        const changePercent = ((currentPriceUSD - previousCloseUSD) / previousCloseUSD) * 100;
+
+        // Fetch USD/TRY rate for conversion
+        let usdTryRate = 34; // Fallback
+        try {
+            const usdTryUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/TRY=X?interval=1d&range=1d';
+            const usdTryResponse = await fetch(usdTryUrl);
+            const usdTryData = await usdTryResponse.json();
+
+            if (usdTryData?.chart?.result?.[0]?.meta?.regularMarketPrice) {
+                usdTryRate = usdTryData.chart.result[0].meta.regularMarketPrice;
+            }
+        } catch (error) {
+            console.warn('Could not fetch USD/TRY rate, using fallback:', error);
+        }
+
+        const currentPriceTRY = currentPriceUSD * usdTryRate;
+        const previousCloseTRY = previousCloseUSD * usdTryRate;
+
+        return NextResponse.json({
+            success: true,
+            data: {
+                symbol: symbol.toUpperCase(),
+                name,
+                currentPrice: currentPriceTRY,
+                previousClose: previousCloseTRY,
+                changeAmount: currentPriceTRY - previousCloseTRY,
+                changePercent,
+                currency: 'TRY',
+                timestamp: new Date().toISOString(),
+                source: 'yahoo-finance',
+                metadata: {
+                    priceUSD: currentPriceUSD,
+                    usdTryRate: usdTryRate
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error('[Crypto Price API] Error:', error);
         return NextResponse.json({
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error'
@@ -94,82 +372,42 @@ export async function GET(request: NextRequest) {
         }
         
         // Handle different asset types
-        if (assetType === 'FUND') {
-            // TEFAS funds - fetch from TEFAS API
-            return await getTEFASFundPrice(symbol);
+        switch (assetType?.toUpperCase()) {
+            case 'FUND':
+                // TEFAS funds - fetch from TEFAS service
+                return await getTEFASFundPrice(symbol);
+
+            case 'STOCK':
+                // BIST stocks - fetch from BIST service
+                return await getBISTStockPrice(symbol);
+
+            case 'COMMODITY':
+                // Handle commodities (Gold, Silver)
+                if (symbol.toUpperCase() === 'GOLD') {
+                    return await getGoldPrice();
+                } else if (symbol.toUpperCase() === 'SILVER') {
+                    return await getSilverPrice();
+                } else {
+                    return NextResponse.json({
+                        success: false,
+                        error: `Unsupported commodity: ${symbol}. Supported: GOLD, SILVER`
+                    }, { status: 400 });
+                }
+
+            case 'CURRENCY':
+                // Handle currency pairs
+                return await getCurrencyPrice(symbol);
+
+            case 'CRYPTO':
+                // Handle cryptocurrencies
+                return await getCryptoPrice(symbol);
+
+            default:
+                return NextResponse.json({
+                    success: false,
+                    error: `Invalid or missing asset type. Supported types: STOCK, FUND, COMMODITY, CURRENCY, CRYPTO`
+                }, { status: 400 });
         }
-        
-        // Build Yahoo Finance symbol for stocks
-        let yahooSymbol = symbol;
-        if (assetType === 'STOCK') {
-            // BIST symbols need .IS suffix for Yahoo Finance
-            yahooSymbol = `${symbol}.IS`;
-        }
-        
-        console.log(`[Price API] Fetching price for ${yahooSymbol}...`);
-        
-        // Fetch from Yahoo Finance v8 API
-        const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=1d`;
-        const response = await fetch(yahooUrl, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36'
-            }
-        });
-        
-        if (!response.ok) {
-            console.error(`[Price API] Yahoo Finance returned ${response.status}`);
-            return NextResponse.json({
-                success: false,
-                error: `Failed to fetch price: ${response.statusText}`
-            }, { status: response.status });
-        }
-        
-        const data = await response.json();
-        
-        // Extract price data
-        const result = data?.chart?.result?.[0];
-        if (!result || !result.meta) {
-            console.error('[Price API] Invalid response structure from Yahoo Finance');
-            return NextResponse.json({
-                success: false,
-                error: 'Invalid price data received'
-            }, { status: 500 });
-        }
-        
-        const meta = result.meta;
-        const currentPrice = meta.regularMarketPrice;
-        const previousClose = meta.chartPreviousClose || meta.previousClose;
-        const currency = meta.currency || 'TRY';
-        
-        if (!currentPrice) {
-            console.error('[Price API] No price data available');
-            return NextResponse.json({
-                success: false,
-                error: 'Price data not available'
-            }, { status: 404 });
-        }
-        
-        const changeAmount = currentPrice - (previousClose || currentPrice);
-        const changePercent = previousClose 
-            ? ((currentPrice - previousClose) / previousClose) * 100 
-            : 0;
-        
-        console.log(`[Price API] Success: ${yahooSymbol} = ${currentPrice} ${currency}`);
-        
-        return NextResponse.json({
-            success: true,
-            data: {
-                symbol,
-                yahooSymbol,
-                currentPrice,
-                previousClose,
-                changeAmount,
-                changePercent,
-                currency,
-                timestamp: new Date().toISOString(),
-                source: 'yahoo-finance'
-            }
-        });
         
     } catch (error) {
         console.error('[Price API] Error:', error);

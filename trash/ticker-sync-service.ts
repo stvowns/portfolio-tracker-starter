@@ -7,7 +7,8 @@
 
 import { db } from '@/db';
 import { tickerCache, tickerSyncLogs, NewTickerCache } from '@/db/schema/price-cache';
-import { fetchBISTCompaniesFromKAP } from './kap-direct-client';
+import { bistService, type BISTCompany } from './bist-service';
+import { tefasService, type TEFASFund } from './tefas-service';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
@@ -30,15 +31,10 @@ interface TickerSyncResult {
     error?: string;
 }
 
-// BIST company interface (from Borsa MCP)
-interface BISTCompany {
-    ticker_kodu: string;
-    sirket_adi: string;
-    sehir?: string;
-}
+// BIST company interface (from BIST service)
 
 /**
- * Sync BIST tickers from Borsa MCP
+ * Sync BIST tickers from KAP API
  */
 export async function syncBISTTickers(
     config: Omit<TickerSyncConfig, 'syncType'>
@@ -64,7 +60,7 @@ export async function syncBISTTickers(
         
         // Fetch BIST tickers directly from KAP (faster than Borsa MCP)
         console.log('[Ticker Sync] Fetching BIST tickers from KAP...');
-        const companies: BISTCompany[] = await fetchBISTCompaniesFromKAP();
+        const companies: BISTCompany[] = await bistService.fetchCompanies();
         
         console.log('[Ticker Sync] Found companies:', companies.length);
         
@@ -192,7 +188,7 @@ export async function syncBISTTickers(
 }
 
 /**
- * Sync TEFAS fund tickers (placeholder for future implementation)
+ * Sync TEFAS fund tickers from TEFAS API
  */
 export async function syncTEFASTickers(
     config: Omit<TickerSyncConfig, 'syncType'>
@@ -200,7 +196,11 @@ export async function syncTEFASTickers(
     const logId = randomUUID();
     const startTime = Date.now();
     const syncType = 'TEFAS';
-    
+
+    let successfulInserts = 0;
+    let failedInserts = 0;
+    let totalRecords = 0;
+
     try {
         // Create sync log
         await db.insert(tickerSyncLogs).values({
@@ -211,44 +211,129 @@ export async function syncTEFASTickers(
             status: 'running',
             createdAt: new Date()
         });
-        
-        // TODO: Implement TEFAS sync
-        // For now, just mark as completed with 0 records
-        
+
+        // Fetch TEFAS funds from TEFAS service
+        console.log('[Ticker Sync] Fetching TEFAS funds...');
+        const funds: TEFASFund[] = await tefasService.fetchFunds();
+
+        console.log('[Ticker Sync] Found TEFAS funds:', funds.length);
+
+        totalRecords = funds.length;
+
+        if (totalRecords === 0) {
+            throw new Error('No TEFAS funds found from TEFAS API');
+        }
+
+        // Clear existing TEFAS tickers if force sync
+        if (config.force) {
+            await db.delete(tickerCache)
+                .where(eq(tickerCache.assetType, 'FUND'));
+        }
+
+        // Insert tickers into database
+        console.log('[Ticker Sync] Starting database insert for', totalRecords, 'funds');
+
+        for (const fund of funds) {
+            try {
+                const tickerId = randomUUID();
+                const now = new Date();
+
+                const tickerData: NewTickerCache = {
+                    id: tickerId,
+                    assetType: 'FUND',
+                    symbol: fund.fon_kodu,
+                    name: fund.fon_adi,
+                    city: null,
+                    category: fund.fon_turu || null,
+                    extraData: null,
+                    lastUpdated: now,
+                    dataSource: 'tefas',
+                    createdAt: now,
+                    updatedAt: now
+                };
+
+                // Upsert: insert or update if symbol already exists
+                await db.insert(tickerCache)
+                    .values(tickerData)
+                    .onConflictDoUpdate({
+                        target: tickerCache.symbol,
+                        set: {
+                            name: fund.fon_adi,
+                            category: fund.fon_turu || null,
+                            lastUpdated: now,
+                            updatedAt: now
+                        }
+                    });
+
+                successfulInserts++;
+            } catch (error) {
+                const errorMsg = error instanceof Error ? error.message : String(error);
+                console.error(`[Ticker Sync] Failed to insert ticker ${fund.fon_kodu}:`, errorMsg);
+                console.error('[Ticker Sync] Error details:', error);
+                failedInserts++;
+            }
+        }
+
+        // Update sync log
         const duration = Date.now() - startTime;
-        
+        const status = failedInserts > 0 && successfulInserts === 0
+            ? 'failed'
+            : failedInserts > 0
+                ? 'partial'
+                : 'completed';
+
+        console.log('[Ticker Sync] TEFAS Completed:', {
+            totalRecords,
+            successfulInserts,
+            failedInserts,
+            duration,
+            status
+        });
+
         await db.update(tickerSyncLogs)
             .set({
-                totalRecords: 0,
-                successfulInserts: 0,
-                failedInserts: 0,
+                totalRecords,
+                successfulInserts,
+                failedInserts,
                 completedAt: new Date(),
                 durationMs: duration,
-                status: 'completed',
-                errorMessage: 'TEFAS sync not implemented yet'
+                status
             })
             .where(eq(tickerSyncLogs.id, logId));
-        
+
         return {
             logId,
             syncType,
-            totalRecords: 0,
-            successfulInserts: 0,
-            failedInserts: 0,
+            totalRecords,
+            successfulInserts,
+            failedInserts,
             duration,
-            status: 'completed'
+            status
         };
-        
+
     } catch (error) {
+        // Update sync log with error
         const duration = Date.now() - startTime;
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        
+
+        await db.update(tickerSyncLogs)
+            .set({
+                totalRecords,
+                successfulInserts,
+                failedInserts,
+                completedAt: new Date(),
+                durationMs: duration,
+                status: 'failed',
+                errorMessage
+            })
+            .where(eq(tickerSyncLogs.id, logId));
+
         return {
             logId,
             syncType,
-            totalRecords: 0,
-            successfulInserts: 0,
-            failedInserts: 0,
+            totalRecords,
+            successfulInserts,
+            failedInserts,
             duration,
             status: 'failed',
             error: errorMessage
@@ -268,9 +353,9 @@ export async function syncAllTickers(
     const bistResult = await syncBISTTickers(config);
     results.push(bistResult);
     
-    // Sync TEFAS (when implemented)
-    // const tefasResult = await syncTEFASTickers(config);
-    // results.push(tefasResult);
+    // Sync TEFAS
+    const tefasResult = await syncTEFASTickers(config);
+    results.push(tefasResult);
     
     return results;
 }

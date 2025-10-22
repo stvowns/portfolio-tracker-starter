@@ -1,18 +1,20 @@
 /**
- * Standalone script to sync TEFAS funds
- * Run: npx tsx scripts/sync-tefas-funds.ts
+ * TEFAS Data Sync Script
+ *
+ * Syncs TEFAS fund data from official TEFAS API
+ * Run: npx tsx scripts/sync-tefas-data.ts
  */
 
 import { db } from '../db';
 import { tickerCache, tickerSyncLogs } from '../db/schema/price-cache';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
-import { fetchTEFASFundsFromTEFAS } from '../lib/services/kap-direct-client';
+import { tefasService } from '../lib/services/tefas-service';
 
-async function syncTickers() {
+async function syncTEFASData() {
     const logId = randomUUID();
     const startTime = Date.now();
-    
+
     try {
         // Create sync log
         await db.insert(tickerSyncLogs).values({
@@ -23,23 +25,23 @@ async function syncTickers() {
             status: 'running',
             createdAt: new Date()
         });
-        
-        // Fetch all TEFAS funds from official TEFAS API
+
         console.log('📥 Fetching all TEFAS funds from official TEFAS API...');
-        
-        const funds = await fetchTEFASFundsFromTEFAS();
-        
+
+        // Fetch all TEFAS funds
+        const funds = await tefasService.fetchFunds();
+
         console.log(`✅ Fetched ${funds.length} funds from TEFAS API`);
-        
-        // Clear existing
+
+        // Clear existing TEFAS funds
         console.log('🗑️  Clearing existing TEFAS funds...');
         await db.delete(tickerCache).where(eq(tickerCache.assetType, 'FUND'));
-        
-        // Insert new
+
+        // Insert new funds
         console.log('💾 Inserting funds into database...');
         let successful = 0;
         let failed = 0;
-        
+
         for (const fund of funds) {
             try {
                 const now = new Date();
@@ -49,7 +51,7 @@ async function syncTickers() {
                     symbol: fund.fon_kodu,
                     name: fund.fon_adi,
                     city: null,
-                    category: fund.fon_turu || null,
+                    category: fund.fon_turu || 'Yatırım Fonu',
                     extraData: null,
                     lastUpdated: now,
                     dataSource: 'tefas',
@@ -57,7 +59,7 @@ async function syncTickers() {
                     updatedAt: now
                 });
                 successful++;
-                
+
                 if (successful % 100 === 0) {
                     console.log(`  ✓ Inserted ${successful}/${funds.length}`);
                 }
@@ -66,9 +68,9 @@ async function syncTickers() {
                 failed++;
             }
         }
-        
+
         const duration = Date.now() - startTime;
-        
+
         // Update log
         await db.update(tickerSyncLogs)
             .set({
@@ -80,17 +82,17 @@ async function syncTickers() {
                 status: failed === 0 ? 'completed' : 'partial'
             })
             .where(eq(tickerSyncLogs.id, logId));
-        
-        console.log(`\n✅ Sync completed!`);
+
+        console.log(`\n✅ TEFAS Sync completed!`);
         console.log(`   Total: ${funds.length}`);
         console.log(`   Success: ${successful}`);
         console.log(`   Failed: ${failed}`);
         console.log(`   Duration: ${(duration / 1000).toFixed(2)}s`);
-        
+
     } catch (error) {
-        console.error('❌ Sync failed:', error);
+        console.error('❌ TEFAS Sync failed:', error);
         const duration = Date.now() - startTime;
-        
+
         await db.update(tickerSyncLogs)
             .set({
                 completedAt: new Date(),
@@ -99,13 +101,13 @@ async function syncTickers() {
                 errorMessage: error instanceof Error ? error.message : 'Unknown error'
             })
             .where(eq(tickerSyncLogs.id, logId));
-        
+
         process.exit(1);
     }
 }
 
 // Run
-syncTickers()
+syncTEFASData()
     .then(() => process.exit(0))
     .catch((error) => {
         console.error('Fatal error:', error);
