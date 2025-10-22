@@ -224,4 +224,270 @@ Tablo yoğunluk modu (örnek sınıf yaklaşımı):
 
 ---
 
+## 16) Dashboard Tasarımı (Detaylı Bilgiler)
+
+### 16.1 Dashboard Genel Yapısı
+Dashboard, kullanıcının portföy durumunu tek bakışta anlaması için tasarlanmış ana ekrandır. Aşağıdaki hiyerarşik yapıyı takip eder:
+
+**Ana Bölümler:**
+1. **Header Bar** - Para birimi, tema, hızlı ekleme
+2. **Özet Kartlar Grid** - Toplam değer, gün içi değişim, performans
+3. **Ana Grafik Alanı** - Portföy dağılımı ve zaman içindeki performans
+4. **Varlık Listesi** - Detaylı varlık bilgileri ve işlemler
+5. **Hedef ve Risk Paneli** - Portföy hedeflerine uyum ve risk analizi
+
+### 16.2 Layout Grid Yapısı
+
+**Desktop (≥ 1024px):**
+```
+┌─────────────────────────────────────────────────────────┐
+│ Header (H: 64px)                                         │
+├─────────────────────────────────────────────────────────┤
+│ Özet Kartlar (H: 140px, Grid 4x1)                        │
+├─────────────────────────────────────────────────────────┤
+│ ┌─────────────────┐ ┌─────────────────────────────────┐ │
+│ │ Ana Grafik      │ │ Hedef & Risk Paneli (W: 320px)   │ │
+│ │ (Flex-1)        │ │ ┌─────────────┐ ┌─────────────┐ │ │
+│ │                 │ │ │ Hedef       │ │ Risk        │ │ │
+│ │                 │ │ │ İlerleme    │ │ Göstergesi  │ │ │
+│ │                 │ │ └─────────────┘ └─────────────┘ │ │
+│ └─────────────────┘ └─────────────────────────────────┘ │
+├─────────────────────────────────────────────────────────┤
+│ Varlık Listesi (Flex-1, Sticky Header)                   │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Tablet (768px - 1023px):**
+- Özet kartlar 2x2 grid
+- Grafik paneli tam geniş
+- Hedef/risk paneli grafik altında horizontal cards
+
+**Mobil (< 768px):**
+- Özet kartlar 1x4 vertical stack (scrollable)
+- Grafik tam geniş, responsive height
+- Varlık listesi compact view
+- Sabit alt FAB (Hızlı Ekle)
+
+### 16.3 Özet Kartlar Detayları
+
+**Kart Tipleri ve İçeriği:**
+
+1. **Toplam Portföy Değeri**
+   - Ana değer: ₺125,750.00
+   - Alt bilgi: +2.3% bugün
+   - Mini sparkline: son 7 gün
+   - Hover: detaylı breakdown modal
+
+2. **Gün İçi Performans**
+   - Değişim: +₺2,850.00 (+2.3%)
+   - Renk kodlama: yeşil (artış)/kırmızı (düşüş)
+   - Icon: trend up/down
+   - Click: gün içi detay view
+
+3. **Ay Performansı**
+   - Aylık değişim: +₺8,250.00 (+7.1%)
+   - Yüzde bar görseli
+   - Karşılaştırma: önceki ay
+   - Tooltip: detaylı aylık karşılaştırma
+
+4. **Varlık Sayısı**
+   - Toplam varlık: 12 adet
+   - Kategori badges: Altın (4), Hisse (5), Döviz (3)
+   - Click: kategori filtreleme
+
+**Kart Tasarım Detayları:**
+- Boyut: Desktop (280x140px), Tablet (flex), Mobil (full width)
+- Shadow: Subtle (0 1px 3px 0 rgba(0, 0, 0, 0.1))
+- Border: 1px solid var(--border)
+- Radius: 12px
+- Padding: 20px
+- Background: var(--card)
+- Transition: All 200ms ease-out
+
+### 16.4 Ana Grafik Alanı
+
+**Grafik Tipleri (Toggle):**
+1. **Portföy Dağılımı** - Pie/Donut chart
+2. **Zaman Performansı** - Line chart (1M, 3M, 6M, 1Y)
+3. **Kategori Performansı** - Grouped bar chart
+
+**Grafik Özellikleri:**
+- Tooltip: Detaylı bilgi ve mini tablo
+- Legend: Interactive (click to filter)
+- Zoom: Scroll ile yakınlaştırma
+- Export: PNG/SVG download
+- Responsive: Container based sizing
+
+**Renk Kullanımı:**
+- Altın: --chart-1 (teal)
+- Hisse: --chart-2 (yeşil) 
+- Döviz: --chart-3 (sarı)
+- Crypto: --chart-4 (mor)
+- Diğer: --chart-5 (turuncu)
+
+### 16.5 Hedef ve Risk Paneli
+
+**Hedef İlerleme Kartı:**
+```
+┌─────────────────────────────┐
+│ 🎯 Portföy Hedefi           │
+│ ████████░░░░ 80%           │
+│ Mevcut: 100K / Hedef: 125K │
+│ Kalan: 25K                 │
+│ Son 3 ayda: +15K          │
+└─────────────────────────────┘
+```
+
+**Risk Göstergesi Kartı:**
+```
+┌─────────────────────────────┐
+│ ⚠️ Risk Seviyesi             │
+│ ██████░░░░░ Düşük           │
+│ Skor: 3.2/10               │
+│ Çeşitlendirme: İyi         │
+│ Volatilite: Düşük          │
+└─────────────────────────────┘
+```
+
+**Risk Hesaplama Formülü:**
+- Çeşitlendirme (30%): Kategori dağılımı
+- Volatilite (25%): Varlık oynaklığı
+- Likidite (20%): kolay dönüştürülebilirlik
+- Piyasa riski (15%): ekonominin genel durumu
+- Konsantrasyon (10%): tek varlık bağımlılığı
+
+### 16.6 Varlık Listesi Tasarımı
+
+**Tablo Kolonları:**
+1. **Varlık** - Icon + Ad + Ticker (Badge)
+2. **Miktar** - Sayısal + Birim (gram/adet/USD)
+3. **Alış Fiyatı** - Tarihli ortalama
+4. **Mevcut Fiyat** - Real-time fiyat + trend icon
+5. **Değer** - Miktar × Mevcut Fiyat
+6. **K/Z** - Değer - Maliyet + yüzde
+7. **Performans** - Mini sparkline (7 gün)
+8. **İşlemler** - Action buttons
+
+**Dense/Normal Mode Toggle:**
+- Normal: Row height 56px, padding 12px
+- Dense: Row height 40px, padding 8px
+- Font size: 14px → 13px (dense mode)
+
+**Interactive Features:**
+- Sort: All columns (except actions)
+- Filter: Multi-select categories, price range, performance
+- Search: Real-time ticker/name search
+- Expand: Row expansion for detailed transactions
+
+### 16.7 Responsive Breakpoints
+
+**Desktop (≥ 1024px):**
+- Grid: 12-column system
+- Typography: Body 16px, Small 14px
+- Spacing: 24px base unit
+- Cards: Fixed dimensions where appropriate
+
+**Tablet (768px - 1023px):**
+- Grid: 8-column system  
+- Typography: Body 15px, Small 13px
+- Spacing: 20px base unit
+- Cards: Flexible dimensions
+- Hiding: Secondary info in tooltips
+
+**Mobil (< 768px):**
+- Single column layout
+- Typography: Body 14px, Small 12px
+- Spacing: 16px base unit
+- Cards: Full width
+- Horizontal scrolling for tables
+- Bottom navigation: FAB + quick actions
+
+### 16.8 State Management ve Data Flow
+
+**Data Structure:**
+```typescript
+interface DashboardData {
+  summary: {
+    totalValue: number;
+    dailyChange: number;
+    dailyChangePercent: number;
+    monthlyChange: number;
+    monthlyChangePercent: number;
+    assetCount: number;
+  };
+  portfolio: Asset[];
+  targets: Target[];
+  riskAnalysis: RiskScore;
+  performance: PerformanceData[];
+}
+```
+
+**Update Strategies:**
+- Real-time prices: WebSocket connection
+- Batch updates: Every 30 seconds for non-critical data
+- Optimistic UI: Immediate response, rollback on error
+- Caching: 5-minute cache for historical data
+
+### 16.9 Performance Optimizasyonları
+
+**Rendering Optimizations:**
+- Virtual scrolling for large asset lists (>100 items)
+- Memoized chart components
+- Intersection Observer for lazy loading
+- Debounced search (300ms)
+
+**Bundle Optimizations:**
+- Chart library: Tree-shakeable imports
+- Icons: Custom sprite
+- Images: WebP format with fallback
+- CSS: Critical path inline
+
+**Network Optimizations:**
+- API response compression
+- Data pagination for transaction history
+- Background sync for price updates
+- Service worker for offline support
+
+### 16.10 User Interaction Patterns
+
+**Keyboard Shortcuts:**
+- `Ctrl/Cmd + K`: Quick search
+- `Ctrl/Cmd + N`: New transaction
+- `Ctrl/Cmd + /`: Show shortcuts
+- `Escape`: Close modals/panels
+- `Tab/Shift+Tab`: Navigate interface
+
+**Touch Gestures (Mobil):**
+- Swipe left/right: Navigate time periods
+- Pull to refresh: Update prices
+- Long press: Show context menu
+- Double tap: Quick action
+
+**Drag & Drop:**
+- Reorder portfolio items
+- Drag to filters
+- Quick category assignment
+
+### 16.11 Accessibility (WCAG 2.1 AA)
+
+**Visual Accessibility:**
+- Color contrast ratio ≥ 4.5:1 for normal text
+- Focus indicators: 2px solid, high contrast
+- Text scaling: Support 200% zoom
+- High contrast mode: OS level support
+
+**Keyboard Navigation:**
+- Full keyboard access to all features
+- Logical tab order
+- Skip navigation links
+- Focus trapping in modals
+
+**Screen Reader Support:**
+- Semantic HTML5 elements
+- ARIA labels and descriptions
+- Live regions for dynamic updates
+- Data table markup for lists
+
+---
+
 Sorular ve uygulanacak öncelikler için: Önce palet + özet kartlar + tablo ergonomisi; ardından grafik ve erişilebilirlik turu önerilir.

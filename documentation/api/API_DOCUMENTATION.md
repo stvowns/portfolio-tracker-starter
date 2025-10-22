@@ -211,15 +211,15 @@ Belirtilen varlık için güncel fiyat bilgisini çeker.
 {
   "success": true,
   "data": {
-    "symbol": "GC=F",
-    "yahooSymbol": "GC=F",
-    "currentPrice": 2485.50,
-    "previousClose": 2455.20,
-    "changeAmount": 30.30,
-    "changePercent": 1.23,
+    "symbol": "YKT",
+    "name": "YAPI KREDİ PORTFÖY ALTIN FONU",
+    "currentPrice": 0.812882,
+    "previousClose": 0.804027,
+    "changeAmount": 0.008855,
+    "changePercent": 1.10,
     "currency": "TRY",
-    "timestamp": "2025-01-20T10:30:00Z",
-    "source": "yahoo-finance"
+    "timestamp": "2025-10-22T12:41:09.093Z",
+    "source": "tefas-official-v2"
   }
 }
 ```
@@ -227,11 +227,18 @@ Belirtilen varlık için güncel fiyat bilgisini çeker.
 **Örnek Kullanımlar:**
 
 ```bash
-# BIST Hisse
+# BIST Hisse (Yahoo Finance)
 GET /api/prices/latest?symbol=GARAN&type=STOCK
+# Response: "source": "yahoo-finance"
 
-# TEFAS Fonu
-GET /api/prices/latest?symbol=ABC&type=FUND
+# TEFAS Fonu (Resmi TEFAS API - v2 Crawler)
+GET /api/prices/latest?symbol=YKT&type=FUND
+# Response: "source": "tefas-official-v2"
+# Real-time price: 0.812882
+
+# Diğer TEFAS Fonları
+GET /api/prices/latest?symbol=AAK&type=FUND
+GET /api/prices/latest?symbol=AAL&type=FUND
 
 # Kripto Para
 GET /api/prices/latest?symbol=BTC-USD&type=CRYPTO
@@ -241,6 +248,25 @@ GET /api/prices/latest?symbol=GC=F&type=GOLD
 
 # Gümüş (Gram olarak dönüştürülür)
 GET /api/prices/latest?symbol=SI=F&type=SILVER
+```
+
+**TEFAS Fon API Özellikleri:**
+- ✅ **Real-time fiyatlar** - Resmi TEFAS API'den anlık veri
+- ✅ **Günlük değişim** - Otomatik hesaplama
+- ✅ **5 dakika cache** - Performans optimizasyonu
+- ✅ **1,910+ fon** - Tam fon kapsamı
+- ✅ **Error handling** - 3 deneme, exponential backoff
+
+**Tüm TEFAS Fonları Listesi:**
+```bash
+# Tüm fonları senkronize et
+npx tsx scripts/sync-tefas-funds.ts
+
+# Fon listesi (örnek)
+AAK - ATA PORTFÖY ÇOKLU VARLIK DEĞİŞKEN FON
+AAL - ATA PORTFÖY PARA PİYASASI (TL) FONU
+YKT - YAPI KREDİ PORTFÖY ALTIN FONU
+... (1,910+ fon)
 ```
 
 ### 2. Test API'leri
@@ -410,30 +436,78 @@ type Currency = "TRY" | "USD" | "EUR" | "JPY" | "GBP" | "CHF";
 ## ⏰ Fiyat Çekme Zamanlamaları
 
 ### Piyasa Saatleri
-- **BIST (STOCK)**: 09:30 - 18:00 (Hafta içi)
-- **TEFAS (FUND)**: Sadece 11:00 (Hafta içi)
-- **Altın/Gümüş**: 09:00 - 18:00 (Hafta içi)
-- **Kripto**: 24/7
+- **BIST (STOCK)**: 09:30 - 18:00 (Hafta içi) - Yahoo Finance
+- **TEFAS (FUND)**: 10:00 - 18:00 (Hafta içi) - Resmi API, Real-time
+- **Altın/Gümüş**: 09:00 - 18:00 (Hafta içi) - Yahoo Finance
+- **Kripto**: 24/7 - Yahoo Finance
 - **Nakit**: Manuel giriş
 
 ### Cache Freshness
-- **TEFAS Fonları**: 24 saat
+- **TEFAS Fonları**: 5 dakika (real-time caching)
 - **Diğer Varlıklar**: 1 saat
+- **Internal API**: Automatic cache management
 
 ---
 
 ## 🔗 Fiyat Kaynakları
 
-### Yahoo Finance
-- **BIST Hisse**: `{symbol}.IS`
-- **Kripto**: `{symbol}-USD`
-- **Altın**: `GC=F`
-- **Gümüş**: `SI=F`
-- **Döviz**: `{PAIR}=X`
+### Yahoo Finance (External API)
+**Endpoint:** `https://query1.finance.yahoo.com/v8/finance/chart/`
+**Kapsam:** BIST Hisse, Kripto, Altın, Gümüş, Döviz
+**Format:** `{symbol}.IS` for BIST, `{symbol}-USD` for crypto
+**Features:** Real-time prices, market data
+**Rate Limit:** Resmi olmayan, makul kullanım önerilir
 
-### TEFAS
-- **Primary**: GitHub API (ücretsiz, günlük güncelleme)
-- **Fallback**: RapidAPI (günlük 10 istek limiti)
+### TEFAS Official API (Primary - v2 Crawler)
+**Endpoint:** `POST https://www.tefas.gov.tr/api/DB/BindHistoryInfo`
+**Kapsam:** 1,910+ Yatırım Fonu
+**Implementation:** Modern TypeScript crawler with caching
+**Features:**
+- ✅ Real-time prices
+- ✅ 5-minute cache with memory management
+- ✅ Retry logic (3 attempts, exponential backoff)
+- ✅ Data validation and error handling
+- ✅ Previous day comparison
+
+**Request Headers:**
+```http
+Content-Type: application/x-www-form-urlencoded; charset=UTF-8
+X-Requested-With: XMLHttpRequest
+User-Agent: Mozilla/5.0 (compatible; PortfolioTracker/1.0)
+Origin: https://www.tefas.gov.tr
+Referer: https://www.tefas.gov.tr/TarihselVeriler.aspx
+```
+
+**Request Body:**
+```http
+fontip=YAT&fonkod=FON_CODE&bastarih=DD.MM.YYYY&bittarih=DD.MM.YYYY
+```
+
+**Response Format:**
+```json
+{
+  "draw": 0,
+  "recordsTotal": 1910,
+  "recordsFiltered": 1910,
+  "data": [
+    {
+      "TARIH": 1761091200000,
+      "FONKODU": "YKT",
+      "FONUNVAN": "YAPI KREDİ PORTFÖY ALTIN FONU",
+      "FIYAT": 0.812882,
+      "TEDPAYSAYISI": 92750.0,
+      "KISISAYISI": 375.0,
+      "PORTFOYBUYUKLUK": 75402345.67
+    }
+  ]
+}
+```
+
+### GitHub Fallback API (Backup Only)
+**Endpoint:** `https://raw.githubusercontent.com/emirhalici/tefas_intermittent_api/data/fund_data.json`
+**Usage:** Sadece TEFAS API çökmesi durumunda otomatik geçiş
+**Coverage:** ~50-100 popüler fon
+**Update:** Günlük 12:00 Türkiye saati
 
 ---
 

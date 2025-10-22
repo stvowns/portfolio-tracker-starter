@@ -439,42 +439,21 @@ GET https://query1.finance.yahoo.com/v8/finance/chart/GARAN.IS?interval=1d&range
 
 ---
 
-### 7.2 TEFAS GitHub API (Primary)
-**Endpoint:** `https://raw.githubusercontent.com/emirhalici/tefas_intermittent_api/data/fund_data.json`
+### 7.2 TEFAS Official API
+**Endpoint:** `https://www.tefas.gov.tr/api/DB/BindHistoryInfo`
 
 **Avantajlar:**
-- Ücretsiz
-- Rate limit yok
-- Günde 1 kez güncellenir (12:00 Turkey time)
-
-**Response:**
-```json
-[
-  {
-    "code": "AKG",
-    "description": "Ak Portföy Gelişen Ülkeler Yabancı Hisse Senedi Fonu",
-    "priceTRY": "0.062345",
-    "changePercentageDaily": "1.23"
-  }
-]
-```
-
----
-
-### 7.3 RapidAPI TEFAS (Fallback)
-**Endpoint:** `https://tefas-api.p.rapidapi.com/api/v1/funds/{FUND_CODE}`
-
-**Kullanım:**
-- GitHub API başarısız olursa fallback
-- **Rate Limit:** 10 request/day (Free plan)
-- **Dikkat:** Çok dikkatli kullanılmalı!
+- Ücretsiz ve rate limit yok
+- Resmi kaynak, güvenilir
+- Real-time veri
+- Tüm fonlara erişim
 
 **Request:**
 ```bash
-GET https://tefas-api.p.rapidapi.com/api/v1/funds/AKG
-Headers:
-  x-rapidapi-key: YOUR_KEY
-  x-rapidapi-host: tefas-api.p.rapidapi.com
+POST https://www.tefas.gov.tr/api/DB/BindHistoryInfo
+Content-Type: application/x-www-form-urlencoded
+
+Body: fonKod=AKG&srb=Y&fontip=YAT&baslangic Tarihi=2024-01-01&bitis Tarihi=2024-01-02
 ```
 
 ---
@@ -634,8 +613,7 @@ GET /api/tickers/test
 - Next.js Docs: https://nextjs.org/docs
 - Drizzle ORM: https://orm.drizzle.team
 - Yahoo Finance API: (unofficial, public endpoint)
-- TEFAS GitHub: https://github.com/emirhalici/tefas_intermittent_api
-- RapidAPI TEFAS: https://rapidapi.com/erenunal/api/tefas-api
+- TEFAS Official: https://www.tefas.gov.tr
 
 ---
 

@@ -147,74 +147,65 @@ interface TEFASFund {
 
 /**
  * Fetch TEFAS funds from TEFAS official API
+ * @deprecated Use TEFASCrawler class instead for better performance and features
  */
 export async function fetchTEFASFundsFromTEFAS(): Promise<TEFASFund[]> {
-    // TEFAS has multiple endpoints, let's try the main one
-    const TEFAS_API_URL = 'https://www.tefas.gov.tr/api/DB/BindComparisonFundList';
-    
+    console.log('[TEFAS API] Fetching funds from official TEFAS API using new crawler...');
+
     try {
-        console.log('[TEFAS Direct] Fetching funds from TEFAS API...');
-        
-        // First, try to get the data
-        const response = await fetch(TEFAS_API_URL, {
-            method: 'POST', // TEFAS API uses POST
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                'Accept': 'application/json, text/javascript, */*; q=0.01',
-                'X-Requested-With': 'XMLHttpRequest',
-                'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-                'Origin': 'https://www.tefas.gov.tr',
-                'Referer': 'https://www.tefas.gov.tr/FonKarsilastirma.aspx'
-            },
-            body: 'fontip=YAT' // YAT = Yatırım Fonları (all investment funds)
+        // Import the new crawler
+        const { tefasCrawler } = await import('./tefas-crawler');
+
+        const funds = await tefasCrawler.fetchLatestFunds();
+
+        // Extract unique funds and convert to legacy format
+        const fundMap = new Map<string, TEFASFund>();
+
+        funds.forEach(fund => {
+            if (!fundMap.has(fund.code)) {
+                fundMap.set(fund.code, {
+                    fon_kodu: fund.code,
+                    fon_adi: fund.name,
+                    fon_turu: undefined // Type info not available in this endpoint
+                });
+            }
         });
-        
-        if (!response.ok) {
-            throw new Error(`TEFAS API returned ${response.status}: ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        
-        const funds: TEFASFund[] = [];
-        
-        // TEFAS API returns data with specific structure
-        if (data && Array.isArray(data.data)) {
-            for (const item of data.data) {
-                const fundCode = item.FONKODU;
-                const fundName = item.FONUNVAN;
-                const fundType = item.FONTIPI;
-                
-                if (fundCode && fundName) {
-                    funds.push({
-                        fon_kodu: fundCode.trim(),
-                        fon_adi: fundName.trim(),
-                        fon_turu: fundType ? fundType.trim() : undefined
-                    });
-                }
-            }
-        } else if (Array.isArray(data)) {
-            // Fallback: direct array
-            for (const item of data) {
-                const fundCode = item.FONKODU || item.fonKodu;
-                const fundName = item.FONUNVAN || item.fonUnvan;
-                const fundType = item.FONTIPI || item.fonTipi;
-                
-                if (fundCode && fundName) {
-                    funds.push({
-                        fon_kodu: fundCode.trim(),
-                        fon_adi: fundName.trim(),
-                        fon_turu: fundType ? fundType.trim() : undefined
-                    });
-                }
-            }
-        }
-        
-        console.log(`[TEFAS Direct] Successfully fetched ${funds.length} funds`);
-        
-        return funds;
-        
+
+        const tefasFunds = Array.from(fundMap.values());
+        console.log(`[TEFAS API] Fetched ${tefasFunds.length} unique funds from TEFAS`);
+        return tefasFunds;
+
     } catch (error) {
-        console.error('[TEFAS Direct] Error fetching funds:', error);
-        throw error;
+        console.error('[TEFAS API] Error:', error);
+
+        // Fallback to GitHub API if TEFAS fails
+        console.log('[TEFAS Fallback] Using GitHub intermittent API as backup...');
+        try {
+            const response = await fetch('https://raw.githubusercontent.com/emirhalici/tefas_intermittent_api/data/fund_data.json', {
+                headers: {
+                    'Accept': 'application/json',
+                    'User-Agent': 'Mozilla/5.0'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`GitHub API returned ${response.status}: ${response.statusText}`);
+            }
+
+            const funds = await response.json();
+
+            const tefasFunds: TEFASFund[] = funds.map((fund: any) => ({
+                fon_kodu: fund.code,
+                fon_adi: fund.description,
+                fon_turu: undefined
+            }));
+
+            console.log(`[TEFAS Fallback] Fetched ${tefasFunds.length} funds from GitHub`);
+            return tefasFunds;
+
+        } catch (fallbackError) {
+            console.error('[TEFAS Fallback] Error:', fallbackError);
+            return []; // Return empty array to prevent crashes
+        }
     }
 }

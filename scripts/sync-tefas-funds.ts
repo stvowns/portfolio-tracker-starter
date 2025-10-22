@@ -7,8 +7,7 @@ import { db } from '../db';
 import { tickerCache, tickerSyncLogs } from '../db/schema/price-cache';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
-
-const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY || '8087c41afbmsh30bf3e0c8b0b777p155f23jsn0c33bae3cbe8';
+import { fetchTEFASFundsFromTEFAS } from '../lib/services/kap-direct-client';
 
 async function syncTickers() {
     const logId = randomUUID();
@@ -25,38 +24,12 @@ async function syncTickers() {
             createdAt: new Date()
         });
         
-        // Fetch all TEFAS funds from RapidAPI
-        // RapidAPI Free Plan: 10 requests/day
-        // /api/v1/funds = 1 request → ALL 3285 funds
-        // Daily syncs (11:00 + 17:00) = only 2 requests/day
-        // Remaining 8 requests for price fetching
-        console.log('📥 Fetching all TEFAS funds from RapidAPI...');
+        // Fetch all TEFAS funds from official TEFAS API
+        console.log('📥 Fetching all TEFAS funds from official TEFAS API...');
         
-        const response = await fetch('https://tefas-api.p.rapidapi.com/api/v1/funds', {
-            headers: {
-                'x-rapidapi-key': RAPIDAPI_KEY,
-                'x-rapidapi-host': 'tefas-api.p.rapidapi.com'
-            }
-        });
+        const funds = await fetchTEFASFundsFromTEFAS();
         
-        if (!response.ok) {
-            throw new Error(`RapidAPI returned ${response.status}: ${response.statusText}`);
-        }
-        
-        const result = await response.json();
-        
-        if (!result.success || !result.data) {
-            throw new Error('Invalid response from RapidAPI');
-        }
-        
-        // Transform to our format
-        const funds = result.data.map((fund: any) => ({
-            fon_kodu: fund.key,
-            fon_adi: fund.value,
-            fon_turu: null // Type info not available in list endpoint
-        }));
-        
-        console.log(`✅ Fetched ${funds.length} funds from RapidAPI (total: ${result.meta?.total || funds.length})`);
+        console.log(`✅ Fetched ${funds.length} funds from TEFAS API`);
         
         // Clear existing
         console.log('🗑️  Clearing existing TEFAS funds...');
@@ -79,7 +52,7 @@ async function syncTickers() {
                     category: fund.fon_turu || null,
                     extraData: null,
                     lastUpdated: now,
-                    dataSource: 'takasbank',
+                    dataSource: 'tefas',
                     createdAt: now,
                     updatedAt: now
                 });

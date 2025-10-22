@@ -8,124 +8,71 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Get TEFAS fund price from GitHub intermittent API (fallback to RapidAPI if needed)
- * Primary: GitHub (free, no limits, updated daily at 12PM Turkey time)
- * Fallback: RapidAPI (10 req/day limit on free plan)
+ * Format date for TEFAS API (DD.MM.YYYY)
+ */
+function formatDateForTEFAS(date: Date): string {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}.${month}.${year}`;
+}
+
+/**
+ * Get TEFAS fund price from official TEFAS API
+ * Falls back to GitHub API if official API is blocked
  */
 async function getTEFASFundPrice(fundCode: string) {
     try {
-        // Try GitHub first (free, no rate limits)
-        console.log(`[TEFAS Price] Trying GitHub API for ${fundCode}...`);
-        const githubUrl = 'https://raw.githubusercontent.com/emirhalici/tefas_intermittent_api/data/fund_data.json';
-        
-        const githubResponse = await fetch(githubUrl, {
-            headers: {
-                'Accept': 'application/json',
-                'User-Agent': 'Mozilla/5.0'
-            },
-            // Cache for 1 hour (data updates once daily anyway)
-            next: { revalidate: 3600 }
-        });
-        
-        if (githubResponse.ok) {
-            const allFunds = await githubResponse.json();
-            const fund = allFunds.find((f: any) => f.code === fundCode);
-            
-            if (fund) {
-                console.log(`[TEFAS Price] Found ${fundCode} in GitHub data`);
-                const currentPrice = parseFloat(fund.priceTRY);
-                const changePercent = parseFloat(fund.changePercentageDaily);
-                
-                const previousClose = currentPrice / (1 + changePercent / 100);
-                const changeAmount = currentPrice - previousClose;
-                
-                return NextResponse.json({
-                    success: true,
-                    data: {
-                        symbol: fundCode,
-                        name: fund.description,
-                        currentPrice,
-                        previousClose,
-                        changeAmount,
-                        changePercent,
-                        currency: 'TRY',
-                        timestamp: new Date().toISOString(),
-                        source: 'tefas-github'
-                    }
-                });
-            }
-            console.log(`[TEFAS Price] ${fundCode} not found in GitHub data, trying RapidAPI...`);
+        console.log(`[TEFAS Price] Fetching from official TEFAS API for ${fundCode} using new crawler...`);
+
+        // Import and use the new TEFAS crawler
+        const { TEFASCrawler } = await import('../../../../lib/services/tefas-crawler');
+        const crawler = new TEFASCrawler();
+
+        // Get today's data
+        const funds = await crawler.fetch(new Date(), new Date(), fundCode);
+
+        if (funds.length === 0) {
+            throw new Error(`Fund ${fundCode} not found or no price data available for today`);
         }
-        
-        // Fallback to RapidAPI (use sparingly - 10 req/day limit!)
-        console.log(`[TEFAS Price] Using RapidAPI for ${fundCode} (Rate limit: 10/day)`);
-        const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY || '8087c41afbmsh30bf3e0c8b0b777p155f23jsn0c33bae3cbe8';
-        
-        const response = await fetch(`https://tefas-api.p.rapidapi.com/api/v1/funds/${fundCode}`, {
-            headers: {
-                'x-rapidapi-key': RAPIDAPI_KEY,
-                'x-rapidapi-host': 'tefas-api.p.rapidapi.com'
-            },
-            // Cache for 4 hours to reduce API calls
-            next: { revalidate: 14400 }
-        });
-        
-        if (!response.ok) {
-            return NextResponse.json({
-                success: false,
-                error: `RapidAPI returned ${response.status}`
-            }, { status: response.status });
-        }
-        
-        const result = await response.json();
-        
-        if (!result.success || !result.data) {
-            return NextResponse.json({
-                success: false,
-                error: `Fund ${fundCode} not found`
-            }, { status: 404 });
-        }
-        
-        const fund = result.data;
-        
-        // Get latest price from lineValues array (last element)
-        if (!fund.lineValues || fund.lineValues.length === 0) {
-            return NextResponse.json({
-                success: false,
-                error: 'No price data available for this fund'
-            }, { status: 404 });
-        }
-        
-        const latest = fund.lineValues[fund.lineValues.length - 1];
-        const currentPrice = latest.value;
-        
-        // Get previous day if available
+
+        // Get the latest price data
+        const latestData = funds[funds.length - 1];
+        const currentPrice = latestData.price;
+
+        // Get previous day's data for comparison
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const previousFunds = await crawler.fetch(yesterday, yesterday, fundCode);
+
         let previousClose = currentPrice;
-        if (fund.lineValues.length > 1) {
-            previousClose = fund.lineValues[fund.lineValues.length - 2].value;
+        let changePercent = 0;
+
+        if (previousFunds.length > 0) {
+            previousClose = previousFunds[previousFunds.length - 1].price;
+            changePercent = previousClose ? ((currentPrice - previousClose) / previousClose) * 100 : 0;
         }
-        
+
         const changeAmount = currentPrice - previousClose;
-        const changePercent = previousClose ? ((currentPrice - previousClose) / previousClose) * 100 : 0;
-        
+
         return NextResponse.json({
             success: true,
             data: {
                 symbol: fundCode,
-                name: fund.title,
+                name: latestData.name,
                 currentPrice,
                 previousClose,
                 changeAmount,
                 changePercent,
                 currency: 'TRY',
                 timestamp: new Date().toISOString(),
-                source: 'tefas-rapidapi',
-                warning: 'RapidAPI free plan: 10 requests/day limit'
+                source: 'tefas-official-v2'
             }
         });
-        
+
     } catch (error) {
         console.error('[TEFAS Price API] Error:', error);
+
         return NextResponse.json({
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error'
