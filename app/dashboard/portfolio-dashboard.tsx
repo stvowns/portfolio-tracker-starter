@@ -463,12 +463,12 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
                                     Emin misiniz?
                                 </AlertDialogTitle>
                                 <AlertDialogDescription className="space-y-2">
-                                    <p className="font-semibold">
+                                    <div className="font-semibold">
                                         Bu işlem GERİ ALINAMAZ!
-                                    </p>
-                                    <p>
+                                    </div>
+                                    <div>
                                         Tüm varlıklarınız ve işlem geçmişiniz kalıcı olarak silinecek:
-                                    </p>
+                                    </div>
                                     <ul className="list-disc list-inside space-y-1 text-sm">
                                         <li>{assets.length} varlık</li>
                                         <li>{getTotalTransactions()} işlem</li>

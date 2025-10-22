@@ -5,7 +5,6 @@
  * - Fetch fund information from official TEFAS API
  * - Fetch real-time fund prices
  * - Search and filter TEFAS funds
- * - Fallback to GitHub API if official API fails
  */
 
 import { randomUUID } from 'crypto';
@@ -42,7 +41,6 @@ export interface TEFASFundPrice {
  */
 export class TEFASService {
     private readonly TEFAS_API_URL = 'https://www.tefas.gov.tr/api/DB/BindHistoryInfo';
-    private readonly GITHUB_FALLBACK_URL = 'https://raw.githubusercontent.com/emirhalici/tefas_intermittent_api/data/fund_data.json';
     private readonly headers = {
         'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
         'Accept': 'application/json, text/javascript, */*; q=0.01',
@@ -57,7 +55,7 @@ export class TEFASService {
      * Fetch all TEFAS funds from official TEFAS API
      *
      * @returns Promise<TEFASFund[]> Array of TEFAS funds
-     * @throws Error if both APIs fail
+     * @throws Error if API fails
      */
     async fetchFunds(): Promise<TEFASFund[]> {
         try {
@@ -115,38 +113,8 @@ export class TEFASService {
             return tefasFunds;
 
         } catch (error) {
-            console.error('[TEFAS Service] Official API failed, trying fallback...', error);
-
-            // Fallback to GitHub API if TEFAS fails
-            try {
-                console.log('[TEFAS Service] Using GitHub intermittent API as backup...');
-
-                const response = await fetch(this.GITHUB_FALLBACK_URL, {
-                    headers: {
-                        'Accept': 'application/json',
-                        'User-Agent': 'Mozilla/5.0'
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error(`GitHub API returned ${response.status}: ${response.statusText}`);
-                }
-
-                const funds = await response.json();
-
-                const tefasFunds: TEFASFund[] = funds.map((fund: any) => ({
-                    fon_kodu: fund.code,
-                    fon_adi: fund.description,
-                    fon_turu: null
-                }));
-
-                console.log(`[TEFAS Service] Fetched ${tefasFunds.length} funds from GitHub`);
-                return tefasFunds;
-
-            } catch (fallbackError) {
-                console.error('[TEFAS Service] Fallback API also failed:', fallbackError);
-                throw new Error('Both TEFAS official and fallback APIs failed');
-            }
+            console.error('[TEFAS Service] Official API failed:', error);
+            throw new Error(`TEFAS API failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     }
 
@@ -161,7 +129,7 @@ export class TEFASService {
         try {
             console.log(`[TEFAS Service] Fetching price for ${fundCode}...`);
 
-            // Try official TEFAS API
+            // Use official TEFAS API
             const response = await fetch(this.TEFAS_API_URL, {
                 method: 'POST',
                 headers: this.headers,
@@ -225,55 +193,8 @@ export class TEFASService {
             };
 
         } catch (error) {
-            console.error(`[TEFAS Service] Error fetching price for ${fundCode}, trying fallback...`, error);
-
-            // Fallback to GitHub API
-            try {
-                console.log(`[TEFAS Service] Using GitHub fallback for ${fundCode}...`);
-
-                const response = await fetch(this.GITHUB_FALLBACK_URL, {
-                    headers: {
-                        'Accept': 'application/json',
-                        'User-Agent': 'Mozilla/5.0'
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error(`GitHub API returned ${response.status}: ${response.statusText}`);
-                }
-
-                const allFunds = await response.json();
-                const fund = allFunds.find((f: any) => f.code === fundCode.toUpperCase());
-
-                if (!fund) {
-                    throw new Error(`Fund ${fundCode} not found in fallback API`);
-                }
-
-                const currentPrice = parseFloat(fund.priceTRY) || 0;
-                const changePercent = parseFloat(fund.changePercentageDaily) || 0;
-
-                const previousClose = currentPrice / (1 + changePercent / 100);
-                const changeAmount = currentPrice - previousClose;
-
-                console.log(`[TEFAS Service] Fallback success: ${fundCode} = ${currentPrice} TRY`);
-
-                return {
-                    symbol: fundCode,
-                    name: fund.description,
-                    currentPrice,
-                    previousClose,
-                    changeAmount,
-                    changePercent,
-                    currency: 'TRY',
-                    timestamp: new Date().toISOString(),
-                    source: 'tefas-github',
-                    note: 'Data updated daily at 12PM Turkey time (fallback)'
-                };
-
-            } catch (fallbackError) {
-                console.error(`[TEFAS Service] Fallback API also failed for ${fundCode}:`, fallbackError);
-                throw new Error(`Failed to fetch price for ${fundCode} from both APIs`);
-            }
+            console.error(`[TEFAS Service] Error fetching price for ${fundCode}:`, error);
+            throw new Error(`Failed to fetch price for ${fundCode}: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
     }
 

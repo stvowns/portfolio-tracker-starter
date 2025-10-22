@@ -46,12 +46,19 @@ async function syncTickers() {
         
         for (const company of companies) {
             try {
+                // Symbol null veya boş ise atla
+                if (!company.ticker_kodu || company.ticker_kodu.trim() === '') {
+                    console.warn(`  ⚠️ Skipping company with empty ticker: ${company.sirket_adi}`);
+                    failed++;
+                    continue;
+                }
+
                 const now = new Date();
                 await db.insert(tickerCache).values({
                     id: randomUUID(),
                     assetType: 'STOCK',
-                    symbol: company.ticker_kodu,
-                    name: company.sirket_adi,
+                    symbol: company.ticker_kodu.trim(),
+                    name: company.sirket_adi || 'Bilinmeyen Şirket',
                     city: company.sehir || null,
                     category: null,
                     extraData: null,

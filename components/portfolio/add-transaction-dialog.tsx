@@ -159,6 +159,13 @@ export function AddTransactionDialog({
         }
     }, [assetName, assetType]);
 
+    // Kripto para seçildiğinde otomatik fiyat getir
+    useEffect(() => {
+        if (assetType === "CRYPTO" && assetName && !showCustomInput) {
+            fetchMarketPriceForCrypto(assetName);
+        }
+    }, [assetName, assetType, showCustomInput]);
+
     const getAssetNamePlaceholder = (type: string) => {
         switch (type) {
             case "GOLD": return "Altın çeşidini seçin";
@@ -204,6 +211,17 @@ export function AddTransactionDialog({
                     { value: "Nakit CAD", label: "💵 Kanada Doları" },
                     { value: "custom", label: "✏️ Özel Para Birimi" }
                 ];
+            case "CRYPTO":
+                // Major 5 kripto para için hazır butonlar
+                const majorCryptos = [
+                    { value: "Bitcoin", label: "₿ Bitcoin (BTC)" },
+                    { value: "Ethereum", label: "◈ Ethereum (ETH)" },
+                    { value: "Binance Coin", label: "🟡 Binance Coin (BNB)" },
+                    { value: "Cardano", label: "💙 Cardano (ADA)" },
+                    { value: "Solana", label: "🟣 Solana (SOL)" },
+                    { value: "custom", label: "✏️ Diğer Kripto Para" }
+                ];
+                return majorCryptos;
             default:
                 return [];
         }
@@ -229,24 +247,25 @@ export function AddTransactionDialog({
     const fetchMarketPriceForPreciousMetal = async (assetType: "GOLD" | "SILVER") => {
         setIsFetchingPrice(true);
         try {
-            const response = await fetch('/api/test/all-prices');
+            const symbol = assetType === "GOLD" ? "GOLD" : "SILVER";
+            const response = await fetch(`/api/prices/latest?symbol=${symbol}&type=COMMODITY`);
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
             const data = await response.json();
 
-            if (data.success && data.results) {
-                const targetSymbol = assetType === "GOLD" ? "GC=F" : "SI=F";
-                const result = data.results.find((r: any) => r.symbol === targetSymbol);
+            if (data.success && data.data?.currentPrice) {
+                const price = Math.round(data.data.currentPrice * 100) / 100; // 2 ondalık basamak
+                setValue("pricePerUnit", price);
 
-                if (result?.success && result.data?.gramTRY) {
-                    const price = Math.round(result.data.gramTRY * 100) / 100; // 2 ondalık basamak
-                    setValue("pricePerUnit", price);
+                const metalName = assetType === "GOLD" ? "Altın" : "Gümüş";
+                toast.success(`${metalName} gram fiyatı alındı`, {
+                    description: `₺${price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/gram`
+                });
 
-                    const metalName = assetType === "GOLD" ? "Altın" : "Gümüş";
-                    toast.success(`${metalName} gram fiyatı alındı`, {
-                        description: `₺${price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/gram`
-                    });
-
-                    return price;
-                }
+                return price;
             }
 
             toast.info("Fiyat bilgisi alınamadı", {
@@ -254,6 +273,50 @@ export function AddTransactionDialog({
             });
         } catch (error) {
             console.error('[Market Price] Error:', error);
+            toast.info("Fiyat bilgisi alınamadı", {
+                description: "Manuel olarak girin"
+            });
+        } finally {
+            setIsFetchingPrice(false);
+        }
+
+        return null;
+    };
+
+    // Fetch crypto prices from market prices API
+    const fetchMarketPriceForCrypto = async (cryptoName: string) => {
+        setIsFetchingPrice(true);
+        try {
+            // Map crypto names to API symbols
+            const cryptoSymbolMap: Record<string, string> = {
+                "Bitcoin": "BTC",
+                "Ethereum": "ETH",
+                "Binance Coin": "BNB",
+                "Cardano": "ADA",
+                "Solana": "SOL"
+            };
+
+            const symbol = cryptoSymbolMap[cryptoName] || cryptoName;
+
+            const response = await fetch(`/api/prices/latest?symbol=${symbol}&type=CRYPTO`);
+            const data = await response.json();
+
+            if (data.success && data.data?.currentPrice) {
+                const price = Math.round(data.data.currentPrice * 100) / 100; // 2 ondalık basamak
+                setValue("pricePerUnit", price);
+
+                toast.success(`${cryptoName} fiyatı alındı`, {
+                    description: `₺${price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                });
+
+                return price;
+            }
+
+            toast.info("Fiyat bilgisi alınamadı", {
+                description: "Manuel olarak girin"
+            });
+        } catch (error) {
+            console.error('[Crypto Price] Error:', error);
             toast.info("Fiyat bilgisi alınamadı", {
                 description: "Manuel olarak girin"
             });
@@ -532,16 +595,21 @@ export function AddTransactionDialog({
                                         ))}
                                     </SelectContent>
                                 </Select>
-                                {showCustomInput && assetType === "CASH" && (
+                                {showCustomInput && (assetType === "CASH" || assetType === "CRYPTO") && (
                                     <div className="space-y-2">
                                         <Input
-                                            placeholder="Özel para birimi kodu (örn: SAR, AED)"
-                                            value={customCurrency}
+                                            placeholder={assetType === "CASH" ? "Özel para birimi kodu (örn: SAR, AED)" : "Kripto para adı (örn: Dogecoin)"}
+                                            value={assetType === "CASH" ? customCurrency : assetName}
                                             onChange={(e) => {
-                                                const value = e.target.value.toUpperCase();
-                                                setCustomCurrency(value);
-                                                if (value.length > 0) {
-                                                    setValue("assetName", `Nakit ${value}`);
+                                                const value = e.target.value;
+                                                if (assetType === "CASH") {
+                                                    const upperValue = value.toUpperCase();
+                                                    setCustomCurrency(upperValue);
+                                                    if (upperValue.length > 0) {
+                                                        setValue("assetName", `Nakit ${upperValue}`);
+                                                    }
+                                                } else {
+                                                    setValue("assetName", value);
                                                 }
                                             }}
                                             autoFocus
@@ -553,7 +621,9 @@ export function AddTransactionDialog({
                                             onClick={() => {
                                                 setShowCustomInput(false);
                                                 setValue("assetName", "");
-                                                setCustomCurrency("");
+                                                if (assetType === "CASH") {
+                                                    setCustomCurrency("");
+                                                }
                                             }}
                                         >
                                             ← Listeye Dön

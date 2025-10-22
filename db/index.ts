@@ -3,14 +3,14 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import Database from 'better-sqlite3';
 import * as authSchema from './schema/auth';
 import * as portfolioSchema from './schema/portfolio';
-import * as appSchema from '../lib/db/schema';
+import * as priceCacheSchema from './schema/price-cache';
 
 const sqlite = new Database(process.env.DATABASE_URL!.replace('file:', ''));
 export const db = drizzle(sqlite, {
   schema: {
     ...authSchema,
     ...portfolioSchema,
-    ...appSchema,
+    ...priceCacheSchema,
   },
 });
 
@@ -31,10 +31,13 @@ export const {
 } = portfolioSchema;
 
 export const {
-  calendarEvents,
-  tasks,
-  expenses
-} = appSchema;
+  priceCache,
+  priceSyncLogs,
+  tickerCache,
+  tickerSyncLogs,
+  PRICE_SYNC_STATUS,
+  SYNC_LOG_STATUS
+} = priceCacheSchema;
 
 // Export types
 export type {
@@ -45,3 +48,14 @@ export type {
   Transaction,
   NewTransaction
 } from './schema/portfolio';
+
+export type {
+  PriceCache,
+  NewPriceCache,
+  PriceSyncLog,
+  NewPriceSyncLog,
+  TickerCache,
+  NewTickerCache,
+  TickerSyncLog,
+  NewTickerSyncLog
+} from './schema/price-cache';
