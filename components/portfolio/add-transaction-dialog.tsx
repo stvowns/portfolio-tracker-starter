@@ -352,14 +352,17 @@ export function AddTransactionDialog({
                     });
                 }
             } else {
-                toast.info("Fiyat bilgisi alınamadı", {
-                    description: "Manuel olarak girin"
+                const errorData = await response.json().catch(() => null);
+                const errorMessage = errorData?.error || "API hatası";
+                toast.error("Fiyat bilgisi alınamadı", {
+                    description: errorMessage.length > 100 ? errorMessage.substring(0, 100) + "..." : errorMessage
                 });
             }
         } catch (error) {
             console.error('[Ticker Select] Price fetch error:', error);
-            toast.info("Fiyat bilgisi alınamadı", {
-                description: "Manuel olarak girin"
+            const errorMessage = error instanceof Error ? error.message : 'Bilinmeyen hata';
+            toast.error("Fiyat bilgisi alınamadı", {
+                description: errorMessage.length > 100 ? errorMessage.substring(0, 100) + "..." : errorMessage
             });
         } finally {
             setIsFetchingPrice(false);
@@ -589,8 +592,10 @@ export function AddTransactionDialog({
                                     </SelectTrigger>
                                     <SelectContent>
                                         {assetOptions.map((option) => (
-                                            <SelectItem key={option.value} value={option.value}>
-                                                {option.label}
+                                            <SelectItem key={option.value} value={option.value} title={option.label}>
+                                                <span className="truncate break-words">
+                                                    {option.label.length > 40 ? `${option.label.substring(0, 40)}...` : option.label}
+                                                </span>
                                             </SelectItem>
                                         ))}
                                     </SelectContent>

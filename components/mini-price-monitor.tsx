@@ -30,6 +30,17 @@ export function MiniPriceMonitor() {
 
         try {
             const response = await fetch('/api/test/all-prices');
+
+            // Check if response is OK and content type is JSON
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Response is not JSON');
+            }
+
             const data = await response.json();
             
             if (data.success && data.results) {

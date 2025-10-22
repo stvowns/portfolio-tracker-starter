@@ -227,9 +227,12 @@ export function AssetDetailModal({
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="max-w-[98vw] w-[98vw] max-h-[98vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6">
                 <DialogHeader className="space-y-2 pb-2">
+                    <DialogTitle className="sr-only">Varlık Detayları</DialogTitle>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <span className="text-lg sm:text-xl font-bold truncate">{asset.name}</span>
+                            <span className="text-lg sm:text-xl font-bold truncate break-words" title={asset.name}>
+                                {asset.name.length > 40 ? `${asset.name.substring(0, 40)}...` : asset.name}
+                            </span>
                             <Badge variant="secondary" className="shrink-0 text-xs">
                                 {getAssetTypeLabel(asset.assetType)}
                             </Badge>

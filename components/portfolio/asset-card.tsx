@@ -81,7 +81,9 @@ export function AssetCard({ asset, currency, onAssetClick, dailyChange }: AssetC
                 <div className="grid grid-cols-3 gap-3">
                     {/* Left Column - Name & Current Price */}
                     <div className="flex flex-col gap-0.5">
-                        <h3 className="font-semibold text-xs leading-tight">{asset.name}</h3>
+                        <h3 className="font-semibold text-xs leading-tight truncate break-words" title={asset.name}>
+                            {asset.name.length > 40 ? `${asset.name.substring(0, 40)}...` : asset.name}
+                        </h3>
                         <div className="flex items-baseline gap-1">
                             <span className="text-xs font-medium">
                                 {formatCurrency(currentPrice)}

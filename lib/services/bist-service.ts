@@ -166,7 +166,13 @@ export class BISTService {
             });
 
             if (!response.ok) {
-                throw new Error(`Yahoo Finance returned ${response.status}: ${response.statusText}`);
+                if (response.status === 404) {
+                    throw new Error(`Hisse senedi bulunamadı: ${ticker}. Bu sembol artık işlem görmüyor olabilir.`);
+                } else if (response.status === 429) {
+                    throw new Error(`API limiti aşıldı. Lütfen birkaç saniye bekleyip tekrar deneyin.`);
+                } else {
+                    throw new Error(`Yahoo Finance API Hatası (${response.status}): ${response.statusText}`);
+                }
             }
 
             const data = await response.json();

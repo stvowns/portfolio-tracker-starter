@@ -152,8 +152,8 @@ export function TickerAutocomplete({
                           </span>
                         )}
                       </div>
-                      <span className="text-sm text-muted-foreground truncate">
-                        {ticker.name}
+                      <span className="text-sm text-muted-foreground truncate break-words" title={ticker.name}>
+                        {ticker.name.length > 40 ? `${ticker.name.substring(0, 40)}...` : ticker.name}
                       </span>
                     </div>
                   </CommandItem>
