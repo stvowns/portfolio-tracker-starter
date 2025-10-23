@@ -2,13 +2,48 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET() {
   try {
-    // Test verileri - gerçek price API'sinden alınabilir
+    // Test verileri - MiniPriceMonitor bileşeninin beklediği formatta
     const testResults = [
-      { symbol: 'THYAO', price: 245.50, change: 2.5, changePercent: 1.02 },
-      { symbol: 'AKBNK', price: 12.75, change: -0.15, changePercent: -1.17 },
-      { symbol: 'GARAN', price: 38.90, change: 0.45, changePercent: 1.17 },
-      { symbol: 'ISCTR', price: 5.82, change: 0.08, changePercent: 1.39 },
-      { symbol: 'SASA', price: 18.65, change: -0.23, changePercent: -1.22 },
+      {
+        symbol: 'USD/TRY',
+        success: true,
+        data: {
+          currentPrice: 34.25,
+          currency: 'TRY'
+        }
+      },
+      {
+        symbol: 'EUR/TRY',
+        success: true,
+        data: {
+          currentPrice: 37.12,
+          currency: 'TRY'
+        }
+      },
+      {
+        symbol: 'GC=F',
+        success: true,
+        data: {
+          gramTRY: 2458.50,
+          currency: 'TRY'
+        }
+      },
+      {
+        symbol: 'SI=F',
+        success: true,
+        data: {
+          gramTRY: 28.75,
+          currency: 'TRY'
+        }
+      },
+      {
+        symbol: 'BTC-USD',
+        success: true,
+        data: {
+          priceTRY: 2450000,
+          currency: 'TRY'
+        }
+      }
     ];
 
     return NextResponse.json({

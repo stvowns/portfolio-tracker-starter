@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
                 // Net maliyet = Kalan miktar × Ortalama alış fiyatı
                 const averageBuyPrice = buyQuantity > 0 ? buyAmount / buyQuantity : 0;
                 const netAmount = netQuantity * averageBuyPrice;
-                const averagePrice = netQuantity > 0 ? netAmount / netQuantity : 0;
+                const averagePrice = averageBuyPrice; // Ortalama maliyet zaten averageBuyPrice'dir
                 
                 // Gerçekleşen kar/zarar (Realized P&L)
                 const realizedProfitLoss = sellQuantity > 0 
@@ -87,9 +87,11 @@ export async function GET(request: NextRequest) {
                 if (netQuantity <= 0) {
                     currentValue = 0;
                 } else if (asset.currentPrice) {
-                    currentValue = parseFloat(asset.currentPrice) * netQuantity;
+                    currentValue = parseFloat(asset.currentPrice.toString()) * netQuantity;
                 } else {
-                    currentValue = netAmount;
+                    // Fiyat yoksa ortalama maliyeti kullan (geçici çözüm)
+                    console.log(`[Portfolio API] No current price for asset ${asset.name}, using average price`);
+                    currentValue = averagePrice * netQuantity;
                 }
 
                 // Gerçekleşmemiş kar/zarar (Unrealized P&L)
@@ -157,7 +159,7 @@ export async function GET(request: NextRequest) {
     } catch (error) {
         console.error("Portfolio özeti alma hatası:", error);
         return Response.json(
-            { success: false, error: "Portföy özeti alınırken hata oluştu: " + error.message },
+            { success: false, error: "Portföy özeti alınırken hata oluştu: " + (error instanceof Error ? error.message : String(error)) },
             { status: 500 }
         );
     }
@@ -205,7 +207,7 @@ export async function POST(request: NextRequest) {
         console.error("Portföy oluşturma hatası:", error);
         
         return Response.json(
-            { success: false, error: "Portföy oluşturulurken hata oluştu: " + error.message },
+            { success: false, error: "Portföy oluşturulurken hata oluştu: " + (error instanceof Error ? error.message : String(error)) },
             { status: 500 }
         );
     }

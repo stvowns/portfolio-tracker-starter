@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Bot, MessageSquare, DollarSign, Coins, Moon, Sun, Database } from "lucide-react";
+import { Bot, MessageSquare, DollarSign, Coins, Moon, Sun, Database, RefreshCw } from "lucide-react";
 import { useTheme } from "next-themes";
 import Link from "next/link";
 import { AddTransactionDialog } from "@/components/portfolio/add-transaction-dialog";
@@ -100,6 +100,68 @@ export default function Page() {
     }
   };
 
+  const fetchAndUpdateCommodityPrices = async () => {
+    try {
+      console.log('[Commodity Sync] Starting commodity price updates...');
+
+      // Altın fiyatını güncelle
+      const goldResponse = await fetch('/api/prices/latest?symbol=GOLD&type=COMMODITY');
+      if (goldResponse.ok) {
+        const goldData = await goldResponse.json();
+        if (goldData.success && goldData.data?.currentPrice) {
+          const goldPrice = goldData.data.currentPrice;
+          console.log(`[Commodity Sync] Gold price fetched: ${goldPrice}`);
+
+          // Doğrudan price sync service kullanarak güncelle
+          const priceUpdateResponse = await fetch('/api/prices/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              asset_types: ['gold'],
+              force: true
+            })
+          });
+
+          if (priceUpdateResponse.ok) {
+            console.log('[Commodity Sync] Gold price updated successfully');
+          } else {
+            console.error('[Commodity Sync] Gold price update failed');
+          }
+        }
+      }
+
+      // Gümüş fiyatını güncelle
+      const silverResponse = await fetch('/api/prices/latest?symbol=SILVER&type=COMMODITY');
+      if (silverResponse.ok) {
+        const silverData = await silverResponse.json();
+        if (silverData.success && silverData.data?.currentPrice) {
+          const silverPrice = silverData.data.currentPrice;
+          console.log(`[Commodity Sync] Silver price fetched: ${silverPrice}`);
+
+          // Doğrudan price sync service kullanarak güncelle
+          const priceUpdateResponse = await fetch('/api/prices/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              asset_types: ['silver'],
+              force: true
+            })
+          });
+
+          if (priceUpdateResponse.ok) {
+            console.log('[Commodity Sync] Silver price updated successfully');
+          } else {
+            console.error('[Commodity Sync] Silver price update failed');
+          }
+        }
+      }
+
+      console.log('[Commodity Sync] Commodity price updates completed');
+    } catch (error) {
+      console.error('[Commodity Sync] Commodity prices sync error:', error);
+    }
+  };
+
   return (
     <div className="@container/main flex flex-1 flex-col gap-2">
       <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
@@ -150,25 +212,35 @@ export default function Page() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handleTickerSync('BIST')}
-              disabled={syncingBist}
-              className="gap-2"
-              title="BIST Ticker'larını Senkronize Et"
-            >
-              <Database className={`h-4 w-4 ${syncingBist ? 'animate-spin' : ''}`} />
-              {syncingBist ? '⏳' : '📊'} BIST
-            </Button>
+              onClick={async () => {
+                // Sequential sync: BIST → TEFAS → Altın/Gümüş
+                setSyncingBist(true);
+                try {
+                  await handleTickerSync('BIST');
+                } finally {
+                  setSyncingBist(false);
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleTickerSync('TEFAS')}
-              disabled={syncingTefas}
-              className="gap-2"
-              title="TEFAS Fonları Senkronizasyonu (3285 fon - RapidAPI)"
+                  setSyncingTefas(true);
+                  try {
+                    await handleTickerSync('TEFAS');
+                  } finally {
+                    setSyncingTefas(false);
+
+                    // Altın ve Gümüş fiyatlarını güncelle
+                    await fetchAndUpdateCommodityPrices();
+
+                    toast.success("Tüm varlıklar güncellendi!", {
+                      description: "BIST, TEFAS, Altın ve Gümüş fiyatları senkronize edildi",
+                    });
+                  }
+                }
+              }}
+              disabled={syncingBist || syncingTefas}
+              className="gap-2 bg-orange-50 hover:bg-orange-100 border-orange-200"
+              title="Tüm Varlıkları Senkronize Et (BIST + TEFAS + Altın/Gümüş)"
             >
-              <Database className={`h-4 w-4 ${syncingTefas ? 'animate-spin' : ''}`} />
-              {syncingTefas ? '⏳' : '💰'} TEFAS
+              <RefreshCw className={`h-4 w-4 ${(syncingBist || syncingTefas) ? 'animate-spin' : ''}`} />
+              {(syncingBist || syncingTefas) ? '⏳' : '🔄'} Tümünü Güncelle
             </Button>
 
             <AddTransactionDialogDialogWithData />

@@ -64,6 +64,7 @@ interface AddTransactionDialogProps {
     onNewAssetAdded?: (transactionData: any) => void;
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
+    showSuccessNotifications?: boolean;
     defaultValues?: {
         assetType?: string;
         assetName?: string;
@@ -75,13 +76,14 @@ interface AddTransactionDialogProps {
     };
 }
 
-export function AddTransactionDialog({ 
-    trigger, 
-    onSuccess, 
+export function AddTransactionDialog({
+    trigger,
+    onSuccess,
     onNewAssetAdded,
     open: controlledOpen,
     onOpenChange,
-    defaultValues 
+    showSuccessNotifications = true,
+    defaultValues
 }: AddTransactionDialogProps) {
     const [internalIsOpen, setInternalIsOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -179,6 +181,7 @@ export function AddTransactionDialog({
         switch (type) {
             case "GOLD":
                 return [
+                    { value: "Gram Altın", label: "Gram Altın" },
                     { value: "Çeyrek Altın", label: "Çeyrek Altın" },
                     { value: "Yarım Altın", label: "Yarım Altın" },
                     { value: "Tam Altın", label: "Tam Altın" },
@@ -188,7 +191,6 @@ export function AddTransactionDialog({
                     { value: "14 Ayar Bilezik", label: "14 Ayar Bilezik" },
                     { value: "18 Ayar Bilezik", label: "18 Ayar Bilezik" },
                     { value: "22 Ayar Bilezik", label: "22 Ayar Bilezik" },
-                    { value: "Gram Altın", label: "Gram Altın" },
                     { value: "Reşat Altını", label: "Reşat Altını" },
                     { value: "Hamit Altını", label: "Hamit Altını" }
                 ];
@@ -261,9 +263,11 @@ export function AddTransactionDialog({
                 setValue("pricePerUnit", price);
 
                 const metalName = assetType === "GOLD" ? "Altın" : "Gümüş";
-                toast.success(`${metalName} gram fiyatı alındı`, {
-                    description: `₺${price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/gram`
-                });
+                if (showSuccessNotifications) {
+                    toast.success(`${metalName} gram fiyatı alındı`, {
+                        description: `₺${price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/gram`
+                    });
+                }
 
                 return price;
             }
@@ -305,9 +309,11 @@ export function AddTransactionDialog({
                 const price = Math.round(data.data.currentPrice * 100) / 100; // 2 ondalık basamak
                 setValue("pricePerUnit", price);
 
-                toast.success(`${cryptoName} fiyatı alındı`, {
-                    description: `₺${price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                });
+                if (showSuccessNotifications) {
+                    toast.success(`${cryptoName} fiyatı alındı`, {
+                        description: `₺${price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    });
+                }
 
                 return price;
             }

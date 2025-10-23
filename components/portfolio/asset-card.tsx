@@ -66,8 +66,13 @@ export function AssetCard({ asset, currency, onAssetClick, dailyChange }: AssetC
 
     const profitLoss = asset.holdings.profitLoss ?? 0;
     const profitLossPercent = asset.holdings.profitLossPercent ?? 0;
-    const currentPrice = asset.currentPrice ? parseFloat(asset.currentPrice) : asset.holdings.averagePrice;
-    const currentValue = asset.holdings.currentValue ?? asset.holdings.netAmount;
+
+    // Use the current price from database
+    const displayPrice = parseFloat(asset.currentPrice || '0');
+    const priceDisplayText = formatCurrency(displayPrice);
+
+    // Use calculated currentValue from API
+    const currentValue = asset.holdings.currentValue;
 
     const profitColor = profitLoss >= 0 ? "text-green-600" : "text-red-600";
     const dailyChangeColor = (dailyChange ?? 0) >= 0 ? "text-green-600" : "text-red-600";
@@ -86,7 +91,7 @@ export function AssetCard({ asset, currency, onAssetClick, dailyChange }: AssetC
                         </h3>
                         <div className="flex items-baseline gap-1">
                             <span className="text-xs font-medium">
-                                {formatCurrency(currentPrice)}
+                                {priceDisplayText}
                             </span>
                             {dailyChange !== undefined && dailyChange !== 0 && (
                                 <span className={`text-[10px] ${dailyChangeColor}`}>
@@ -116,7 +121,7 @@ export function AssetCard({ asset, currency, onAssetClick, dailyChange }: AssetC
                         <p className="text-sm font-semibold">
                             {formatCurrency(currentValue)}
                         </p>
-                        <div className={`text-xs ${profitColor}`}>
+                        <div className={`text-xs ${profitLoss === 0 ? "text-muted-foreground" : profitColor}`}>
                             <span className="font-semibold">{formatCurrency(profitLoss)}</span>
                             <span className="ml-1">{formatPercent(profitLossPercent)}</span>
                         </div>

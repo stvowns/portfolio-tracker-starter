@@ -18,10 +18,10 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { 
-    AlertCircle, 
-    Wallet, 
-    TrendingUp, 
+import {
+    AlertCircle,
+    Wallet,
+    TrendingUp,
     TrendingDown,
     LucideIcon,
     Calendar,
@@ -33,7 +33,8 @@ import {
     Activity,
     Zap,
     Target,
-    Trash2
+    Trash2,
+    RefreshCw
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -139,6 +140,7 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
     const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
     const [isAssetDetailOpen, setIsAssetDetailOpen] = useState(false);
     const [isResetting, setIsResetting] = useState(false);
+    const [isSyncingPrices, setIsSyncingPrices] = useState(false);
 
     const USD_TRY_RATE = 35.12; // TODO: Gerçek zamanlı kur çekebiliriz
 
@@ -237,7 +239,7 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
             }
 
             const result = await response.json();
-            
+
             toast.success("Portföy sıfırlandı!", {
                 description: `${result.data.deletedAssets} varlık ve ${result.data.deletedTransactions} işlem silindi.`,
             });
@@ -252,6 +254,41 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
             });
         } finally {
             setIsResetting(false);
+        }
+    };
+
+    const handleSyncPrices = async (assetIds?: string[]) => {
+        setIsSyncingPrices(true);
+        try {
+            const response = await fetch("/api/portfolio/sync-prices", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ assetIds, force: true }),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || "Fiyat senkronizasyonu başarısız");
+            }
+
+            const result = await response.json();
+
+            toast.success("Fiyatlar güncellendi!", {
+                description: `${result.data.successful} varlık güncellendi${result.data.failed > 0 ? `, ${result.data.failed} başarısız` : ''}`,
+            });
+
+            // Sayfayı yenile
+            await refreshData();
+        } catch (err) {
+            console.error("Sync hatası:", err);
+            const errorMessage = err instanceof Error ? err.message : "Bilinmeyen hata";
+            toast.error("Fiyat güncelleme hatası", {
+                description: errorMessage,
+            });
+        } finally {
+            setIsSyncingPrices(false);
         }
     };
 
@@ -529,15 +566,24 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
                         <div>
                             <h2 className="text-xl font-semibold">Portföyümdeki Varlıklar</h2>
                             <p className="text-sm text-muted-foreground">
-                                {new Date().toLocaleDateString('tr-TR', { 
-                                    day: '2-digit', 
-                                    month: '2-digit', 
+                                {new Date().toLocaleDateString('tr-TR', {
+                                    day: '2-digit',
+                                    month: '2-digit',
                                     year: 'numeric',
                                     hour: '2-digit',
                                     minute: '2-digit'
                                 })}
                             </p>
                         </div>
+                        <Button
+                            onClick={() => handleSyncPrices()}
+                            disabled={isSyncingPrices}
+                            size="sm"
+                            variant="outline"
+                        >
+                            <RefreshCw className={`h-4 w-4 mr-2 ${isSyncingPrices ? 'animate-spin' : ''}`} />
+                            {isSyncingPrices ? "Güncelleniyor..." : "Fiyatları Güncelle"}
+                        </Button>
                     </div>
                     <AssetGroupList
                         assets={assets}

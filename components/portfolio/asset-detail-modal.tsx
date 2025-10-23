@@ -19,14 +19,15 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { 
-    TrendingUp, 
-    TrendingDown, 
-    Wallet, 
+import {
+    TrendingUp,
+    TrendingDown,
+    Wallet,
     Calendar,
     Plus,
     Minus,
-    ArrowRight
+    ArrowRight,
+    AlertTriangle
 } from "lucide-react";
 import { AddTransactionDialog } from "./add-transaction-dialog";
 
@@ -169,6 +170,8 @@ export function AssetDetailModal({
 
     // Function to add new transaction to the list
     const addTransactionToList = (transactionData: { transactionType: "BUY" | "SELL"; quantity: number; pricePerUnit: number; notes?: string }) => {
+        if (!asset) return;
+        
         const newTransaction = {
             id: `tx_new_${Date.now()}`,
             assetId: asset.id,
@@ -190,11 +193,10 @@ export function AssetDetailModal({
         if (isOpen && asset?.id) {
             fetchTransactions();
             // Asset'in currency'sine göre default currency'yi set et
-            if (asset.currency) {
-                setCurrency(asset.currency as "TRY" | "USD" | "EUR");
-            }
+            // For now, default to TRY since currency field is not in the Asset interface
+            setCurrency("TRY");
         }
-    }, [isOpen, asset?.id, asset?.currency, fetchTransactions]);
+    }, [isOpen, asset?.id, fetchTransactions]);
 
     const handleTransactionAdded = async (transactionData?: { transactionType: "BUY" | "SELL"; quantity: number; pricePerUnit: number; notes?: string }) => {
         // Transaction listesini backend'den yeniden çek (gerçek veriyi almak için)
@@ -214,14 +216,10 @@ export function AssetDetailModal({
     const averagePrice = holdings.averagePrice || 0;
     const netAmount = holdings.netAmount || (averagePrice * netQuantity);
     
-    // currentValue varsa kullan, yoksa currentPrice ile hesapla, o da yoksa netAmount kullan
-    let currentValue = holdings.currentValue;
-    if (currentValue === null || currentValue === undefined) {
-        currentValue = currentPrice > 0 ? currentPrice * netQuantity : netAmount;
-    }
-    
-    const profitLoss = currentValue - netAmount;
-    const profitLossPercent = netAmount > 0 ? (profitLoss / netAmount) * 100 : 0;
+    // Use API calculated values
+    const currentValue = holdings.currentValue;
+    const profitLoss = holdings.profitLoss ?? 0;
+    const profitLossPercent = holdings.profitLossPercent ?? 0;
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -329,8 +327,8 @@ export function AssetDetailModal({
                             <Card>
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
                                     <CardTitle className="text-xs font-medium text-muted-foreground">Kar/Zarar</CardTitle>
-                                    {profitLoss >= 0 ? 
-                                        <TrendingUp className="h-3 w-3 text-green-600" /> : 
+                                    {profitLoss >= 0 ?
+                                        <TrendingUp className="h-3 w-3 text-green-600" /> :
                                         <TrendingDown className="h-3 w-3 text-red-600" />
                                     }
                                 </CardHeader>
@@ -519,6 +517,7 @@ export function AssetDetailModal({
                 <AddTransactionDialog
                     trigger={null}
                     onSuccess={(data) => handleTransactionAdded(data)}
+                    showSuccessNotifications={false}
                     open={isAddTransactionOpen}
                     onOpenChange={(open) => {
                         setIsAddTransactionOpen(open);
