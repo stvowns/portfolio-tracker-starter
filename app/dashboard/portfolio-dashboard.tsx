@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AssetDetailModal } from "@/components/portfolio/asset-detail-modal";
 import { PortfolioPieChart } from "@/components/portfolio/portfolio-pie-chart";
 import { AssetGroupList } from "@/components/portfolio/asset-group-list";
+import { FundPerformance } from "@/components/portfolio/fund-performance";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -593,6 +594,16 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
                     />
                 </div>
             )}
+
+            {/* Yatırım Fonları Performansı */}
+            <FundPerformance
+                availableCash={
+                    assets
+                        .filter(a => a.assetType === "CASH" && a.name.includes("TRY"))
+                        .reduce((sum, asset) => sum + (asset.holdings.currentValue || 0), 0)
+                }
+                onTransactionAdded={refreshData}
+            />
 
             {/* Asset Detail Modal */}
             <AssetDetailModal 

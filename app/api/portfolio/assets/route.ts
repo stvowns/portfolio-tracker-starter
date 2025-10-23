@@ -123,65 +123,68 @@ export async function GET(request: NextRequest) {
                     ? sellAmount - (sellQuantity * averageBuyPrice)
                     : 0;
 
-                // Mevcut değer hesapla
+                // Mevcut değer hesapla - HER ZAMAN CANLI FİYAT ÇEK
                 let currentValue: number;
                 let currentPrice: number | null = null;
-                
+
                 if (netQuantity <= 0) {
                     currentValue = 0;
                 } else {
-                    // Önce asset.currentPrice'i kontrol et
-                    if (asset.currentPrice) {
-                        currentPrice = parseFloat(asset.currentPrice.toString());
-                    } else {
-                        // Eğer asset.currentPrice yoksa, market'ten canlı fiyatı dene çek
-                        try {
-                            let symbol = asset.symbol || asset.name;
-                            let type = asset.assetType === 'GOLD' ? 'COMMODITY' :
-                                     asset.assetType === 'SILVER' ? 'COMMODITY' :
-                                     asset.assetType === 'CRYPTO' ? 'CRYPTO' :
-                                     asset.assetType === 'FUND' ? 'FUND' : 'STOCK';
-                            
-                            // Kripto için symbol'ı düzelt
-                            if (asset.assetType === 'CRYPTO') {
-                                if (asset.name.toLowerCase().includes("bitcoin")) {
-                                    symbol = "BTC";
-                                } else if (asset.name.toLowerCase().includes("ethereum")) {
-                                    symbol = "ETH";
-                                } else if (asset.symbol) {
-                                    symbol = asset.symbol.replace("-USD", "").replace("USD", "");
-                                } else {
-                                    symbol = asset.name.toUpperCase();
-                                }
+                    // HER ZAMAN canlı fiyatı dene çek (fiyatta güncel kalmak için)
+                    try {
+                        let symbol = asset.symbol || asset.name;
+                        let type = asset.assetType === 'GOLD' ? 'COMMODITY' :
+                                 asset.assetType === 'SILVER' ? 'COMMODITY' :
+                                 asset.assetType === 'CRYPTO' ? 'CRYPTO' :
+                                 asset.assetType === 'FUND' ? 'FUND' : 'STOCK';
+
+                        // Kripto için symbol'ı düzelt
+                        if (asset.assetType === 'CRYPTO') {
+                            if (asset.name.toLowerCase().includes("bitcoin")) {
+                                symbol = "BTC";
+                            } else if (asset.name.toLowerCase().includes("ethereum")) {
+                                symbol = "ETH";
+                            } else if (asset.symbol) {
+                                symbol = asset.symbol.replace("-USD", "").replace("USD", "");
+                            } else {
+                                symbol = asset.name.toUpperCase();
                             }
-                            
-                            // URL encode symbol to handle special characters
-                            const encodedSymbol = encodeURIComponent(symbol);
-                            const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
-                            const port = process.env.NODE_ENV === 'development' ? '3002' : '3000';
-                            const marketPriceResponse = await fetch(`${baseUrl.replace('3000', port)}/api/prices/latest?symbol=${encodedSymbol}&type=${type}`);
-                            if (marketPriceResponse.ok) {
-                                const marketData = await marketPriceResponse.json();
-                                if (marketData.success && marketData.data?.currentPrice) {
-                                    currentPrice = marketData.data.currentPrice;
-                                    // Asset'i güncelle
-                                    await db.update(assets).set({
-                                        currentPrice: currentPrice,
-                                        lastUpdated: new Date()
-                                    }).where(eq(assets.id, asset.id));
-                                }
-                            }
-                        } catch (error) {
-                            console.log('Market price fetch failed for', asset.name, error);
                         }
+
+                        // URL encode symbol to handle special characters
+                        const encodedSymbol = encodeURIComponent(symbol);
+                        const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+                        const port = process.env.NODE_ENV === 'development' ? '3002' : '3000';
+                        const marketPriceResponse = await fetch(`${baseUrl.replace('3000', port)}/api/prices/latest?symbol=${encodedSymbol}&type=${type}`);
+                        if (marketPriceResponse.ok) {
+                            const marketData = await marketPriceResponse.json();
+                            if (marketData.success && marketData.data?.currentPrice) {
+                                currentPrice = marketData.data.currentPrice;
+                                // Asset'i HER ZAMAN güncelle (canlı fiyatı tutmak için)
+                                await db.update(assets).set({
+                                    currentPrice: currentPrice,
+                                    lastUpdated: new Date()
+                                }).where(eq(assets.id, asset.id));
+
+                                console.log(`[Assets API] Updated ${asset.name} price: ${currentPrice}`);
+                            }
+                        }
+                    } catch (error) {
+                        console.log('Market price fetch failed for', asset.name, error);
                     }
-                    
-                    // Eğer hala currentPrice yoksa, ortalamamaliyeti kullan (geçici çözüm)
+
+                    // Eğer canlı fiyat alınamazsa, asset'teki mevcut fiyatı kullan
+                    if (currentPrice === null && asset.currentPrice) {
+                        currentPrice = parseFloat(asset.currentPrice.toString());
+                        console.log(`[Assets API] Using stored price for ${asset.name}: ${currentPrice}`);
+                    }
+
+                    // Eğer hala currentPrice yoksa, ortalamamaliyeti kullan (son çare)
                     if (currentPrice === null) {
-                        console.log(`[Assets API] No current price for asset ${asset.name}, using average price`);
+                        console.log(`[Assets API] No current price for asset ${asset.name}, using average price: ${averagePrice}`);
                         currentPrice = averagePrice;
                     }
-                    
+
                     currentValue = currentPrice * netQuantity;
                 }
 
@@ -313,17 +316,35 @@ export async function POST(request: NextRequest) {
 
         // Tüm varlık türleri için güncel piyasa fiyatını çekip asset'i güncelle
         try {
-            let symbol = "";
-            let type = "";
-            
+            let currentPrice = null;
+
             if (validatedData.assetType === "GOLD") {
-                symbol = "GOLD";
-                type = "COMMODITY";
+                // Gold için /api/prices/latest kullan
+                const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+                const port = process.env.NODE_ENV === 'development' ? '3002' : '3000';
+                const marketPriceResponse = await fetch(`${baseUrl.replace('3000', port)}/api/prices/latest?symbol=GOLD&type=COMMODITY`);
+
+                if (marketPriceResponse.ok) {
+                    const marketData = await marketPriceResponse.json();
+                    if (marketData.success && marketData.data?.currentPrice) {
+                        currentPrice = marketData.data.currentPrice;
+                    }
+                }
             } else if (validatedData.assetType === "SILVER") {
-                symbol = "SILVER";
-                type = "COMMODITY";
+                // Silver için /api/prices/latest kullan
+                const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+                const port = process.env.NODE_ENV === 'development' ? '3002' : '3000';
+                const marketPriceResponse = await fetch(`${baseUrl.replace('3000', port)}/api/prices/latest?symbol=SILVER&type=COMMODITY`);
+
+                if (marketPriceResponse.ok) {
+                    const marketData = await marketPriceResponse.json();
+                    if (marketData.success && marketData.data?.currentPrice) {
+                        currentPrice = marketData.data.currentPrice;
+                    }
+                }
             } else if (validatedData.assetType === "CRYPTO") {
-                // Kripto için symbol'ı belirle
+                // Kripto için symbol'ı belirle ve /api/prices/latest kullan
+                let symbol = "BTC";
                 if (validatedData.name.toLowerCase().includes("bitcoin")) {
                     symbol = "BTC";
                 } else if (validatedData.name.toLowerCase().includes("ethereum")) {
@@ -333,48 +354,74 @@ export async function POST(request: NextRequest) {
                 } else {
                     symbol = validatedData.name.toUpperCase();
                 }
-                type = "CRYPTO";
-            } else if (validatedData.assetType === "STOCK") {
-                symbol = validatedData.symbol || validatedData.name;
-                type = "STOCK";
-            } else if (validatedData.assetType === "FUND") {
-                symbol = validatedData.symbol || validatedData.name;
-                type = "FUND";
-            } else {
-                symbol = validatedData.symbol || validatedData.name;
-                type = "STOCK"; // Varsayılan
-            }
-            
-            if (symbol) {
-                // URL encode symbol to handle special characters
-                            const encodedSymbol = encodeURIComponent(symbol);
-                            const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
-                            const port = process.env.NODE_ENV === 'development' ? '3002' : '3000';
-                            const marketPriceResponse = await fetch(`${baseUrl.replace('3000', port)}/api/prices/latest?symbol=${encodedSymbol}&type=${type}`);
-                
+
+                const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+                const port = process.env.NODE_ENV === 'development' ? '3002' : '3000';
+                const marketPriceResponse = await fetch(`${baseUrl.replace('3000', port)}/api/prices/latest?symbol=${symbol}&type=CRYPTO`);
+
                 if (marketPriceResponse.ok) {
                     const marketData = await marketPriceResponse.json();
                     if (marketData.success && marketData.data?.currentPrice) {
-                        // Asset'in currentPrice'ini güncelle
-                        await db.update(assets).set({
-                            currentPrice: marketData.data.currentPrice,
-                            lastUpdated: new Date()
-                        }).where(eq(assets.id, newAsset[0].id));
-                        
-                        // Return updated asset
-                        const updatedAsset = await db
-                            .select()
-                            .from(assets)
-                            .where(eq(assets.id, newAsset[0].id))
-                            .limit(1);
-                        
-                        return Response.json({
-                            success: true,
-                            message: "Varlık başarıyla eklendi",
-                            data: updatedAsset[0]
-                        }, { status: 201 });
+                        currentPrice = marketData.data.currentPrice;
                     }
                 }
+            } else if (validatedData.assetType === "STOCK") {
+                // BIST için bistService kullan
+                const { bistService } = await import("@/lib/services/bist-service");
+                let symbol = validatedData.symbol;
+
+                // Eğer symbol yoksa, şirket adından tahmin et
+                if (!symbol) {
+                    // predictBISTTicker fonksiyonunu price-sync-service'ten al
+                    const { predictBISTTicker } = await import("@/lib/services/price-sync-service");
+                    const predictedSymbol = predictBISTTicker(validatedData.name);
+                    if (predictedSymbol) {
+                        symbol = predictedSymbol;
+                    }
+                }
+
+                if (symbol) {
+                    try {
+                        const stockData = await bistService.fetchStockPrice(symbol);
+                        currentPrice = stockData.currentPrice;
+                    } catch (error) {
+                        console.log('BIST price fetch failed for', validatedData.name, error);
+                    }
+                }
+            } else if (validatedData.assetType === "FUND") {
+                // TEFAS için tefasService kullan
+                const { tefasService } = await import("@/lib/services/tefas-service");
+                let symbol = validatedData.symbol;
+
+                if (symbol) {
+                    try {
+                        const fundData = await tefasService.fetchFundPrice(symbol);
+                        currentPrice = fundData.currentPrice;
+                    } catch (error) {
+                        console.log('TEFAS price fetch failed for', validatedData.name, error);
+                    }
+                }
+            }
+
+            // Eğer fiyat başarıyla çekildiyse, asset'i güncelle
+            if (currentPrice !== null) {
+                await db.update(assets).set({
+                    currentPrice: currentPrice,
+                    lastUpdated: new Date()
+                }).where(eq(assets.id, newAsset[0].id));
+
+                // Return updated asset
+                const updatedAsset = await db
+                    .select()
+                    .from(assets)
+                    .where(eq(assets.id, newAsset[0].id))
+                    .limit(1);
+
+                return Response.json({
+                    success: true,
+                    message: "Varlık başarıyla eklendi",
+                    data: updatedAsset[0]
+                }, { status: 201 });
             }
         } catch (error) {
             console.log('Market price fetch failed for', validatedData.name, error);

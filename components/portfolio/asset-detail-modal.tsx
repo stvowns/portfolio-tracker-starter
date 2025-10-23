@@ -215,23 +215,44 @@ export function AssetDetailModal({
     const netQuantity = holdings.netQuantity || 0;
     const averagePrice = holdings.averagePrice || 0;
     const netAmount = holdings.netAmount || (averagePrice * netQuantity);
-    
-    // Use API calculated values
-    const currentValue = holdings.currentValue;
-    const profitLoss = holdings.profitLoss ?? 0;
-    const profitLossPercent = holdings.profitLossPercent ?? 0;
+
+    // Calculate current value correctly: current price * quantity
+    const currentValue = currentPrice * netQuantity;
+    const profitLoss = currentValue - netAmount;
+    const profitLossPercent = netAmount > 0 ? (profitLoss / netAmount) * 100 : 0;
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-[98vw] w-[98vw] max-h-[98vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6">
+            <DialogContent className="max-w-[95vw] sm:max-w-2xl w-[95vw] sm:w-full max-h-[95vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6">
                 <DialogHeader className="space-y-2 pb-2">
                     <DialogTitle className="sr-only">Varlık Detayları</DialogTitle>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <span className="text-lg sm:text-xl font-bold truncate break-words" title={asset.name}>
-                                {asset.name.length > 40 ? `${asset.name.substring(0, 40)}...` : asset.name}
-                            </span>
-                            <Badge variant="secondary" className="shrink-0 text-xs">
+                            <div className="flex-1 min-w-0">
+                                <h2 className="text-lg sm:text-xl font-bold text-left leading-tight" title={asset.name} style={{
+                                    display: '-webkit-box',
+                                    WebkitLineClamp: 2,
+                                    WebkitBoxOrient: 'vertical',
+                                    overflow: 'hidden',
+                                    wordBreak: 'break-word'
+                                }}>
+                                    {asset.name}
+                                </h2>
+                                {asset.symbol && (
+                                    <div className="flex items-center gap-2 mt-2">
+                                        <Badge variant="outline" className="text-xs font-mono bg-primary/5 border-primary/20">
+                                            {asset.symbol}
+                                        </Badge>
+                                        {asset.assetType === 'FUND' && (
+                                            <span className="text-xs text-muted-foreground">TEFAS Fonu</span>
+                                        )}
+                                        {asset.assetType === 'STOCK' && (
+                                            <span className="text-xs text-muted-foreground">BIST</span>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                            <Badge variant="secondary" className="shrink-0 text-xs ml-2">
                                 {getAssetTypeLabel(asset.assetType)}
                             </Badge>
                         </div>
@@ -272,7 +293,7 @@ export function AssetDetailModal({
                         </div>
                     ) : (
                         // Diğer varlıklar için detaylı görünüm
-                        <div className="grid gap-2 sm:gap-3 grid-cols-2 xl:grid-cols-4">
+                        <div className="grid gap-2 sm:gap-3 grid-cols-2 lg:grid-cols-4">
                             <Card>
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
                                     <CardTitle className="text-xs font-medium text-muted-foreground">Miktar</CardTitle>
@@ -347,6 +368,26 @@ export function AssetDetailModal({
                                     </div>
                                 </CardContent>
                             </Card>
+
+                            {/* Mevcut Fiyat Kartı */}
+                            {asset.currentPrice && (
+                                <Card>
+                                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1">
+                                        <CardTitle className="text-xs font-medium text-muted-foreground">Mevcut Fiyat</CardTitle>
+                                        <TrendingUp className="h-3 w-3 text-blue-600" />
+                                    </CardHeader>
+                                    <CardContent className="pb-2 pt-0">
+                                        <div className="flex flex-col items-center justify-center min-h-[2.5rem] text-center">
+                                            <div className="text-sm font-bold leading-tight text-blue-600">
+                                                {formatCurrency(currentPrice)}
+                                            </div>
+                                            <p className="text-[10px] text-muted-foreground">
+                                                Güncel Kur
+                                            </p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
                         </div>
                     )}
 

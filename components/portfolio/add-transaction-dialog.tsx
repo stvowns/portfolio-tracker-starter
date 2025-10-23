@@ -90,6 +90,7 @@ export function AddTransactionDialog({
     const [availableQuantity, setAvailableQuantity] = useState<number>(0);
     const [availableCash, setAvailableCash] = useState<number>(0);
     const [isFetchingPrice, setIsFetchingPrice] = useState(false);
+    const [selectedTickerSymbol, setSelectedTickerSymbol] = useState<string>("");
     
     const isOpen = controlledOpen !== undefined ? controlledOpen : internalIsOpen;
     const setIsOpen = onOpenChange || setInternalIsOpen;
@@ -122,6 +123,7 @@ export function AddTransactionDialog({
     useEffect(() => {
         if (isOpen) {
             // Her açılışta formu sıfırla
+            setSelectedTickerSymbol(""); // Symbol'ü de temizle
             reset({
                 assetType: (defaultValues?.assetType as any) || undefined,
                 assetName: defaultValues?.assetName || "",
@@ -336,6 +338,7 @@ export function AddTransactionDialog({
     const handleTickerSelect = async (ticker: { symbol: string; name: string }) => {
         console.log('[Ticker Select] Selected:', ticker);
         setValue("assetName", ticker.name);
+        setSelectedTickerSymbol(ticker.symbol); // Symbol'ü sakla
 
         // Fetch current price from Yahoo Finance
         setIsFetchingPrice(true);
@@ -419,6 +422,7 @@ export function AddTransactionDialog({
                 body: JSON.stringify({
                     name: data.assetName,
                     assetType: data.assetType,
+                    symbol: selectedTickerSymbol, // Symbol'ı da gönder
                     currency: data.currency || "TRY",
                 }),
             });
@@ -517,7 +521,7 @@ export function AddTransactionDialog({
                     {trigger || defaultTrigger}
                 </DialogTrigger>
             )}
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="max-w-[95vw] sm:max-w-[500px] w-[95vw] sm:w-full max-h-[95vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Yeni İşlem Ekle</DialogTitle>
                     <DialogDescription>
@@ -539,7 +543,7 @@ export function AddTransactionDialog({
                             <SelectTrigger>
                                 <SelectValue placeholder="Varlık türünü seçin" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="max-w-[90vw] sm:max-w-md">
                                 <SelectItem value="GOLD">Altın</SelectItem>
                                 <SelectItem value="SILVER">Gümüş</SelectItem>
                                 <SelectItem value="STOCK">BIST</SelectItem>
@@ -596,11 +600,21 @@ export function AddTransactionDialog({
                                     <SelectTrigger>
                                         <SelectValue placeholder={getAssetNamePlaceholder(assetType)} />
                                     </SelectTrigger>
-                                    <SelectContent>
+                                    <SelectContent className="max-w-[90vw] sm:max-w-md">
                                         {assetOptions.map((option) => (
                                             <SelectItem key={option.value} value={option.value} title={option.label}>
-                                                <span className="truncate break-words">
-                                                    {option.label.length > 40 ? `${option.label.substring(0, 40)}...` : option.label}
+                                                <span
+                                                    style={{
+                                                        display: '-webkit-box',
+                                                        WebkitLineClamp: 2,
+                                                        WebkitBoxOrient: 'vertical',
+                                                        overflow: 'hidden',
+                                                        wordBreak: 'break-word',
+                                                        lineHeight: '1.2',
+                                                        maxHeight: '2.4em'
+                                                    }}
+                                                >
+                                                    {option.label}
                                                 </span>
                                             </SelectItem>
                                         ))}
@@ -742,7 +756,7 @@ export function AddTransactionDialog({
                             <SelectTrigger>
                                 <SelectValue placeholder="Para birimi seçin" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="max-w-[90vw] sm:max-w-md">
                                 <SelectItem value="TRY">₺ Türk Lirası</SelectItem>
                                 <SelectItem value="USD">$ Amerikan Doları</SelectItem>
                                 <SelectItem value="EUR">€ Euro</SelectItem>

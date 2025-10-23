@@ -97,11 +97,13 @@ export function TickerAutocomplete({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between"
+          className="w-full justify-between text-left"
           disabled={disabled}
         >
-          {value || placeholder}
-          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <span className="truncate flex-1 min-w-0 mr-2" title={value || placeholder}>
+            {(value && value.length > 40) ? value.substring(0, 40) + '...' : (value || placeholder)}
+          </span>
+          <ChevronsUpDown className="h-3 w-3 shrink-0 opacity-50 ml-1" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[400px] p-0">
@@ -152,8 +154,20 @@ export function TickerAutocomplete({
                           </span>
                         )}
                       </div>
-                      <span className="text-sm text-muted-foreground truncate break-words" title={ticker.name}>
-                        {ticker.name.length > 40 ? `${ticker.name.substring(0, 40)}...` : ticker.name}
+                      <span
+                        className="text-sm text-muted-foreground"
+                        title={ticker.name}
+                        style={{
+                            display: '-webkit-box',
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: 'vertical',
+                            overflow: 'hidden',
+                            wordBreak: 'break-word',
+                            lineHeight: '1.2',
+                            maxHeight: '2.4em'
+                        }}
+                      >
+                        {ticker.name}
                       </span>
                     </div>
                   </CommandItem>
