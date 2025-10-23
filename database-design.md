@@ -548,6 +548,346 @@ Bu yaklaşım ile:
 
 ---
 
+## 🚀 IMPLEMENTATION PLANI (FRESH START)
+
+### 📋 Genel Bakış
+Bu plan, **sıfırdan** yeni veritabanı yapısı oluşturmayı hedefler. Mevcut veri olmadığı için **clean start** yaklaşımı kullanılıyor. Her adım **database-design.md'deki TO-DO** işaretleri ile takip edilecek.
+
+### 🎯 Başlangıç Durumu
+- **Branch:** `feature/new-database-architecture`
+- **Veritabanı:** Sıfırlanacak (`portfolio.db` silinecek)
+- **Legacy Kod:** Temizlenecek
+- **Timeline:** 8-12 gün (hızlandırılmış)
+- **Risk:** Minimum (clean slate)
+
+### 🗑️ Phase 0: Temizlik ve Hazırlık (0.5 gün)
+**[ ] TO-DO: Temizlik ve hazırlık**
+- [ ] `portfolio.db` veritabanı dosyasını sil
+- [ ] Legacy cache tablolarını temizle (`price_cache`, `ticker_cache`, `*_logs`)
+- [ ] Gereksiz script'leri sil (`scripts/sync-*.ts`)
+- [ ] Eski API'leri geçici olarak devre dışı bırak
+- [ ] Development environment'ı hazırla
+
+### 🎯 Phase 1: Yeni Schema Oluşturma (1 gün)
+**[ ] TO-DO: Yeni tablolar oluştur**
+```sql
+-- 1. Market instruments tablosu oluştur
+CREATE TABLE market_instruments ( ... );
+
+-- 2. User holdings tablosu oluştur
+CREATE TABLE user_holdings ( ... );
+
+-- 3. Price history tablosu oluştur
+CREATE TABLE price_history ( ... );
+
+-- 4. Performance log tablosu oluştur
+CREATE TABLE sync_performance_log ( ... );
+```
+
+**Güncellenecek dosyalar:**
+- [ ] `db/schema/index.ts` - Yeni tablolar ekle
+- [ ] `drizzle.config.ts` - Migration config
+
+### 🌱 Phase 2: Seed Data ve Master Data (1 gün)
+**[ ] TO-DO: Master data ekle**
+```sql
+-- 1. BIST hisseleri (örnek 500 hisse)
+INSERT INTO market_instruments (type, symbol, name, exchange, sector, extra_data) VALUES
+('STOCK', 'GARAN', 'Garanti Bankası A.Ş.', 'BIST', 'Bankacılık', '{"isin":"TRGGRB41015","market_cap":123456789012}'),
+('STOCK', 'ISCTR', 'İş Bankası A.Ş.', 'BIST', 'Bankacılık', '{"isin":"TRISKB91015","market_cap":234567890123}'),
+-- ... daha fazla hisse
+
+-- 2. TEFAS fonları (örnek 200 fon)
+INSERT INTO market_instruments (type, symbol, name, exchange, extra_data) VALUES
+('FUND', 'ADP', 'AK Portföy BIST Banka Endeks...', 'TEFAS', '{"tefas_code":"ADP","fund_type":"HİSSE SENEDİ YOĞUN"}'),
+('FUND', 'ANL', 'Anadolu Hayat Emeklilik...', 'TEFAS', '{"tefas_code":"ANL","fund_type":"KATILIM"}'),
+-- ... daha fazla fon
+
+-- 3. Kripto paralar
+INSERT INTO market_instruments (type, symbol, name, exchange, extra_data) VALUES
+('CRYPTO', 'BTC', 'Bitcoin', 'MULTIPLE', '{"coinmarketcap_id":1,"consensus":"PoW"}'),
+('CRYPTO', 'ETH', 'Ethereum', 'MULTIPLE', '{"coinmarketcap_id":2,"consensus":"PoS"}'),
+-- ... daha fazla kripto
+
+-- 4. Emtialar ve Nakit
+INSERT INTO market_instruments (type, symbol, name, exchange, extra_data) VALUES
+('COMMODITY', 'GOLD', 'Gram Altın', 'FREE_MARKET', '{"unit":"GRAM","purity":999.9}'),
+('COMMODITY', 'SILVER', 'Gram Gümüş', 'FREE_MARKET', '{"unit":"GRAM","purity":999.9}'),
+('CASH', 'TRY', 'Türk Lirası', 'CBRT', '{"currency_code":"TRY","central_bank":"TCMB"}'),
+('CASH', 'USD', 'ABD Doları', 'CBRT', '{"currency_code":"USD","central_bank":"FED"}');
+```
+
+**Güncellenecek dosyalar:**
+- [ ] `scripts/seed-market-data.ts` - Master data seed script
+- [ ] `scripts/seed-cryptos.ts` - Kripto seed data
+- [ ] `scripts/seed-commodities.ts` - Emtia seed data
+
+### ⚡ Phase 3: Batch Upsert Service (3-4 gün)
+**[ ] TO-DO: Güvenli senkronizasyon servisi**
+```typescript
+// 1. Safe batch sync service
+class SafeBatchSync {
+  async syncBISTTickers() { /* implementation */ }
+  async syncTEFASFunds() { /* implementation */ }
+  async syncCryptoPrices() { /* implementation */ }
+}
+
+// 2. Performance monitoring
+class SyncPerformanceLogger {
+  logBatchPerformance(batchData, duration) { /* implementation */ }
+}
+```
+
+**Güncellenecek dosyalar:**
+- [ ] `lib/services/safe-batch-sync.ts` - Yeni sync service
+- [ ] `lib/services/performance-logger.ts` - Monitoring service
+- [ ] `scripts/sync-bist-tickers.ts` - Güncelle (batch upsert)
+- [ ] `scripts/sync-tefas-data.ts` - Güncelle (batch upsert)
+
+### 🔄 Phase 4: API Layer Güncelleme (3-5 gün)
+**[ ] TO-DO: API'leri yeni yapıya göre güncelle**
+
+#### **4.1 Market Data APIs**
+- [ ] `app/api/market/instruments/route.ts` - Yeni market instruments API
+- [ ] `app/api/market/sync/route.ts` - Yeni sync API (batch upsert)
+- [ ] `app/api/prices/latest/route.ts` - Market instruments'dan fiyat çek
+- [ ] `app/api/market/price-history/route.ts` - Fiyat geçmişi API
+
+#### **4.2 User Data APIs (Backward Compatible)**
+- [ ] `app/api/portfolio/assets/route.ts` - User holdings'den veri çek
+- [ ] `app/api/portfolio/holdings/route.ts` - Yeni holdings API
+- [ ] `app/api/portfolio/transactions/route.ts` - Aynı kalsın
+
+#### **4.3 Legacy API'leri Koru**
+```typescript
+// Assets API backward compatibility
+export async function GET(request: NextRequest) {
+  // Mevcut assets formatını koru, veriyi yeni tablolardan çek
+  const holdings = await db.select().from(user_holdings)
+    .where(eq(user_holdings.userId, session.user.id));
+
+  // Legacy format'a dönüştür
+  return legacyFormat;
+}
+```
+
+### 🎨 Phase 5: Frontend Güncelleme (2-3 gün)
+**[ ] TO-DO: UI'yi yeni yapıya göre güncelle**
+
+#### **5.1 Component Updates**
+- [ ] `components/portfolio/asset-list.tsx` - Yeni holdings formatı
+- [ ] `components/portfolio/asset-detail-modal.tsx` - Market data integration
+- [ ] `components/portfolio/fund-performance.tsx` - Yeni veri yapısı
+
+#### **5.2 Service Updates**
+- [ ] `lib/api/portfolio-service.ts` - API çağrıları güncelle
+- [ ] `lib/hooks/use-portfolio.ts` - React hooks güncelle
+
+### 🧪 Phase 6: Testing & Validation (2-3 gün)
+**[ ] TO-DO: Kapsamlı testing**
+
+#### **6.1 Unit Tests**
+- [ ] `tests/sync/performance.test.ts` - Batch sync performance
+- [ ] `tests/migration/data-integrity.test.ts` - Veri bütünlüğü
+- [ ] `tests/api/backward-compatibility.test.ts` - Legacy API test
+
+#### **6.2 Integration Tests**
+- [ ] `tests/e2e/portfolio-sync.test.ts` - End-to-end sync
+- [ ] `tests/e2e/migration.test.ts` - Migration validation
+
+#### **6.3 Performance Tests**
+- [ ] `tests/performance/5000-records.test.ts` - Büyük veri test
+- [ ] `tests/performance/concurrent-sync.test.ts` - Concurrent sync
+
+### 🚀 Phase 7: Go-Live (1 gün)
+**[ ] TO-DO: Production'a geçiş**
+
+#### **7.1 Pre-Deployment**
+- [ ] Database backup
+- [ ] Dry-run migration
+- [ ] Performance baseline measurement
+
+#### **7.2 Deployment**
+- [ ] Migration script çalıştır
+- [ ] Yeni API'leri aktif et
+- [ ] Monitoring kurulumu
+
+#### **7.3 Post-Deployment**
+- [ ] Validation checks
+- [ ] Performance monitoring
+- [ ] Rollback plan (if needed)
+
+---
+
+## 📊 IMPLEMENTATION CHECKLIST
+
+### ✅ Phase 1 - Schema (Tahmini: 1-2 gün)
+- [ ] `market_instruments` tablosu oluştur
+- [ ] `user_holdings` tablosu oluştur
+- [ ] `price_history` tablosu oluştur
+- [ ] `sync_performance_log` tablosu oluştur
+- [ ] Index'leri ekle
+- [ ] Foreign key constraints ekle
+- [ ] Drizzle schema güncelle
+
+### ✅ Phase 2 - Migration (Tahmini: 2-3 gün)
+- [ ] Migration script yaz
+- [ ] Validation script yaz
+- [ ] Mevcut assets → market_instruments
+- [ ] Transactions → user_holdings
+- [ ] Veri bütünlüğü kontrolü
+- [ ] Performance test
+
+### ✅ Phase 3 - Sync Service (Tahmini: 3-4 gün)
+- [ ] SafeBatchSync class yaz
+- [ ] Batch upsert implementation (500 kayıt)
+- [ ] Transaction handling
+- [ ] Error recovery mechanism
+- [ ] Performance logger
+- [ ] Monitoring dashboard
+
+### ✅ Phase 4 - API Layer (Tahmini: 3-5 gün)
+- [ ] Market instruments API
+- [ ] Batch sync API
+- [ ] Price history API
+- [ ] Legacy API compatibility
+- [ ] API documentation
+- [ ] Error handling
+
+### ✅ Phase 5 - Frontend (Tahmini: 2-3 gün)
+- [ ] Component güncellemeleri
+- [ ] Service layer güncellemeleri
+- [ ] React hooks güncellemeleri
+- [ ] UI testing
+- [ ] Performance optimization
+
+### ✅ Phase 6 - Testing (Tahmini: 2-3 gün)
+- [ ] Unit tests
+- [ ] Integration tests
+- [ ] Performance tests
+- [ ] E2E tests
+- [ ] Load testing
+
+### ✅ Phase 7 - Deployment (Tahmini: 1 gün)
+- [ ] Backup strategy
+- [ ] Deployment script
+- [ ] Monitoring setup
+- [ ] Rollback plan
+- [ ] Post-deployment validation
+
+---
+
+## ⏰ Tahmini Timeline (FRESH START)
+
+| Phase | Süre | Başlangıç | Bitiş | Durum |
+|-------|------|-----------|-------|-------|
+| Phase 0 - Temizlik | 0.5 gün | 2025-01-23 | 2025-01-23 | ✅ **TAMAMLANDI** |
+| Phase 1 - Schema | 1 gün | 2025-01-23 | 2025-01-24 | 🚀 **BAŞLIYOR** |
+| Phase 2 - Seed Data | 1 gün | 2025-01-24 | 2025-01-25 | 📋 Plan |
+| Phase 3 - Sync Service | 2-3 gün | 2025-01-25 | 2025-01-28 | 📋 Plan |
+| Phase 4 - API Layer | 2-3 gün | 2025-01-28 | 2025-01-31 | 📋 Plan |
+| Phase 5 - Frontend | 2-3 gün | 2025-01-31 | 2025-02-03 | 📋 Plan |
+| Phase 6 - Testing | 1-2 gün | 2025-02-03 | 2025-02-05 | 📋 Plan |
+| **TOPLAM** | **8-12 gün** | 2025-01-23 | 2025-02-05 | |
+
+---
+
+## 📊 IMPLEMENTATION CHECKLIST (FRESH START)
+
+### ✅ Phase 0 - Temizlik (Tahmini: 0.5 gün)
+- [ ] `portfolio.db` veritabanı dosyasını sil
+- [ ] Legacy cache tablolarını temizle
+- [ ] Gereksiz script'leri sil
+- [ ] Eski API'leri devre dışı bırak
+- [ ] Development environment hazırla
+
+### ✅ Phase 1 - Schema (Tahmini: 1 gün)
+- [ ] `market_instruments` tablosu oluştur
+- [ ] `user_holdings` tablosu oluştur
+- [ ] `price_history` tablosu oluştur
+- [ ] `sync_performance_log` tablosu oluştur
+- [ ] Index'leri ekle
+- [ ] Foreign key constraints ekle
+- [ ] Drizzle schema güncelle
+
+**[ ] Phase 1 BAŞLANGIÇ:** Schema oluşturma `feature/new-database-architecture` branch'inde!
+
+### ✅ Phase 2 - Seed Data (Tahmini: 1 gün)
+- [ ] BIST hisseleri seed data (500+)
+- [ ] TEFAS fonları seed data (200+)
+- [ ] Kripto paralar seed data (10+)
+- [ ] Emtialar seed data
+- [ ] Nakit varlıkları seed data
+
+### ✅ Phase 3 - Sync Service (Tahmini: 2-3 gün)
+- [ ] SafeBatchSync class yaz
+- [ ] Batch upsert implementation (500 kayıt)
+- [ ] Transaction handling
+- [ ] Error recovery mechanism
+- [ ] Performance logger
+- [ ] Monitoring dashboard
+
+### ✅ Phase 4 - API Layer (Tahmini: 2-3 gün)
+- [ ] Market instruments API
+- [ ] Batch sync API
+- [ ] Price history API
+- [ ] User holdings API
+- [ ] Performance API
+- [ ] API documentation
+
+### ✅ Phase 5 - Frontend (Tahmini: 2-3 gün)
+- [ ] Component'ları yeniden yaz
+- [ ] Service layer güncellemeleri
+- [ ] React hooks güncellemeleri
+- [ ] Performance dashboard
+- [ ] Responsive design
+
+### ✅ Phase 6 - Testing (Tahmini: 1-2 gün)
+- [ ] Unit tests
+- [ ] Integration tests
+- [ ] Performance tests
+- [ ] E2E tests
+- [ ] Load testing
+
+### 🚀 BAŞLANGIÇ KONTROL LİSTESİ
+
+**[x] Phase 0 Başlangıç Kontrolü:**
+- [x] Yeni branch oluşturuldu: `feature/new-database-architecture`
+- [x] Database design dokümanı güncellendi
+- [x] Legacy kodlar listelendi
+- [x] Temizlik planı hazır
+
+**[x] Phase 0 - Temizlik İşlemleri:**
+- [x] `portfolio.db` veritabanı dosyasını sil (✅)
+- [x] Legacy cache tablolarını temizle (✅ - DB silindiği ile temizlendi)
+- [x] Gereksiz script'leri sil ve yedekle (✅)
+- [ ] Eski API'leri devre dışı bırak (gelecek phase'de)
+- [ ] Development environment hazırla (✅)
+
+**📋 Tamamlanan Yedekleme İşlemleri:**
+- ✅ Script'ler `scripts/legacy/` klasörüne taşındı
+- ✅ Veritabanı `scripts/backup/portfolio-backup-*.db` olarak yedeklendi
+- ✅ `scripts/legacy/README.md` ile referans rehberi oluşturuldu
+- ✅ Kullanılabilir kod parçaları belgelendirildi
+
+---
+
+## 🎯 Başarı Metrikleri
+
+### Performance Hedefleri
+- ⚡ Sync süresi: 20s → 4s (5x improvement)
+- 💾 Memory kullanımı: %80 azalma
+- 📊 API response time: <200ms
+- 🔄 Concurrent sync: 3+ parallel processes
+
+### Quality Hedefleri
+- 🛡️ Zero data loss
+- 🔄 99.9% uptime
+- 📈 Backward compatibility: 100%
+- 🧪 Test coverage: >90%
+
+---
+
 ## 📊 Örnek Veriler
 
 ### Market Instruments Sample
