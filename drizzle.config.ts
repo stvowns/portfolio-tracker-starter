@@ -5,7 +5,7 @@ config({ path: '.env' });
 
 export default defineConfig({
     out: './drizzle',
-    schema: ['./db/schema/*', './lib/db/schema.ts'],
+    schema: ['./db/schema/*.ts'],
     dialect: 'sqlite',
     dbCredentials: {
         url: process.env.DATABASE_URL!,

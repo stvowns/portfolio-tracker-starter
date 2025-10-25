@@ -90,7 +90,6 @@ export function AddTransactionDialog({
     const [availableQuantity, setAvailableQuantity] = useState<number>(0);
     const [availableCash, setAvailableCash] = useState<number>(0);
     const [isFetchingPrice, setIsFetchingPrice] = useState(false);
-    const [selectedTickerSymbol, setSelectedTickerSymbol] = useState<string>("");
     
     const isOpen = controlledOpen !== undefined ? controlledOpen : internalIsOpen;
     const setIsOpen = onOpenChange || setInternalIsOpen;
@@ -118,12 +117,12 @@ export function AddTransactionDialog({
     const transactionType = watch("transactionType");
     const [customCurrency, setCustomCurrency] = useState("");
     const [showCustomInput, setShowCustomInput] = useState(false);
+    const [selectedTickerSymbol, setSelectedTickerSymbol] = useState("");
 
     // Modal açıldığında formu resetle ve default değerleri set et
     useEffect(() => {
         if (isOpen) {
             // Her açılışta formu sıfırla
-            setSelectedTickerSymbol(""); // Symbol'ü de temizle
             reset({
                 assetType: (defaultValues?.assetType as any) || undefined,
                 assetName: defaultValues?.assetName || "",
@@ -134,7 +133,10 @@ export function AddTransactionDialog({
                 currency: "TRY",
                 notes: ""
             });
-            
+
+            // Ticker symbol'ını sıfırla
+            setSelectedTickerSymbol("");
+
             // Mevcut miktar ve nakit bilgisini set et
             if (defaultValues?.availableQuantity !== undefined) {
                 setAvailableQuantity(defaultValues.availableQuantity);
@@ -338,7 +340,7 @@ export function AddTransactionDialog({
     const handleTickerSelect = async (ticker: { symbol: string; name: string }) => {
         console.log('[Ticker Select] Selected:', ticker);
         setValue("assetName", ticker.name);
-        setSelectedTickerSymbol(ticker.symbol); // Symbol'ü sakla
+        setSelectedTickerSymbol(ticker.symbol);
 
         // Fetch current price from Yahoo Finance
         setIsFetchingPrice(true);
@@ -421,8 +423,8 @@ export function AddTransactionDialog({
                 },
                 body: JSON.stringify({
                     name: data.assetName,
+                    symbol: selectedTickerSymbol || undefined,
                     assetType: data.assetType,
-                    symbol: selectedTickerSymbol, // Symbol'ı da gönder
                     currency: data.currency || "TRY",
                 }),
             });
@@ -521,7 +523,7 @@ export function AddTransactionDialog({
                     {trigger || defaultTrigger}
                 </DialogTrigger>
             )}
-            <DialogContent className="max-w-[95vw] sm:max-w-[500px] w-[95vw] sm:w-full max-h-[95vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle>Yeni İşlem Ekle</DialogTitle>
                     <DialogDescription>
@@ -537,13 +539,14 @@ export function AddTransactionDialog({
                             onValueChange={(value) => {
                                 setValue("assetType", value as any);
                                 setValue("assetName", "");
+                                setSelectedTickerSymbol("");
                             }}
                             value={assetType}
                         >
                             <SelectTrigger>
                                 <SelectValue placeholder="Varlık türünü seçin" />
                             </SelectTrigger>
-                            <SelectContent className="max-w-[90vw] sm:max-w-md">
+                            <SelectContent>
                                 <SelectItem value="GOLD">Altın</SelectItem>
                                 <SelectItem value="SILVER">Gümüş</SelectItem>
                                 <SelectItem value="STOCK">BIST</SelectItem>
@@ -566,14 +569,21 @@ export function AddTransactionDialog({
                         {/* BIST or FUND - Use Ticker Autocomplete */}
                         {(assetType === "STOCK" || assetType === "FUND") ? (
                             <>
-                                <TickerAutocomplete
-                                    value={assetName}
-                                    onValueChange={(value) => setValue("assetName", value)}
-                                    onTickerSelect={handleTickerSelect}
-                                    assetType={assetType}
-                                    placeholder={assetType === "STOCK" ? "BIST ticker ara (örn: GARAN)" : "TEFAS fon ara"}
-                                    disabled={isLoading}
-                                />
+                                <div className="space-y-2">
+                                    <Label htmlFor="assetName">Varlık Adı</Label>
+                                    <TickerAutocomplete
+                                        value={assetName}
+                                            onValueChange={(value) => setValue("assetName", value)}
+                                            onTickerSelect={handleTickerSelect}
+                                            assetType={assetType}
+                                            placeholder={assetType === "STOCK" ? "BIST ticker ara (örn: GARAN)" : "TEFAS fon ara"}
+                                            disabled={isLoading}
+                                            className="w-full"
+                                    />
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-1 truncate max-w-[400px]" title={assetName}>
+                                    {assetName.length > 50 ? `${assetName.substring(0, 50)}...` : assetName}
+                                </div>
                                 {isFetchingPrice && (
                                     <p className="text-xs text-muted-foreground flex items-center gap-1">
                                         <Loader2 className="h-3 w-3 animate-spin" />
@@ -600,21 +610,11 @@ export function AddTransactionDialog({
                                     <SelectTrigger>
                                         <SelectValue placeholder={getAssetNamePlaceholder(assetType)} />
                                     </SelectTrigger>
-                                    <SelectContent className="max-w-[90vw] sm:max-w-md">
+                                    <SelectContent>
                                         {assetOptions.map((option) => (
                                             <SelectItem key={option.value} value={option.value} title={option.label}>
-                                                <span
-                                                    style={{
-                                                        display: '-webkit-box',
-                                                        WebkitLineClamp: 2,
-                                                        WebkitBoxOrient: 'vertical',
-                                                        overflow: 'hidden',
-                                                        wordBreak: 'break-word',
-                                                        lineHeight: '1.2',
-                                                        maxHeight: '2.4em'
-                                                    }}
-                                                >
-                                                    {option.label}
+                                                <span className="truncate break-words max-w-[200px]">
+                                                    {option.label.length > 30 ? `${option.label.substring(0, 30)}...` : option.label}
                                                 </span>
                                             </SelectItem>
                                         ))}
@@ -698,7 +698,7 @@ export function AddTransactionDialog({
                     </div>
 
                     {/* Quantity and Price */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <Label htmlFor="quantity">Miktar</Label>
@@ -756,7 +756,7 @@ export function AddTransactionDialog({
                             <SelectTrigger>
                                 <SelectValue placeholder="Para birimi seçin" />
                             </SelectTrigger>
-                            <SelectContent className="max-w-[90vw] sm:max-w-md">
+                            <SelectContent>
                                 <SelectItem value="TRY">₺ Türk Lirası</SelectItem>
                                 <SelectItem value="USD">$ Amerikan Doları</SelectItem>
                                 <SelectItem value="EUR">€ Euro</SelectItem>

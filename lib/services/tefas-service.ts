@@ -7,7 +7,6 @@
  * - Search and filter TEFAS funds
  */
 
-import { randomUUID } from 'crypto';
 
 /**
  * TEFAS Fund Information Interface
@@ -69,7 +68,7 @@ export class TEFASService {
                     'sfontur': '',
                     'kurucukod': '',
                     'fonkod': '',
-                    'bastarih': this.formatDate(new Date()),
+                    'bastarih': this.formatDate(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)), // 7 gün önce
                     'bittarih': this.formatDate(new Date()),
                     'fonturkod': ''
                 }).toString()
@@ -81,8 +80,14 @@ export class TEFASService {
 
             const responseText = await response.text();
 
+            console.log('[TEFAS Service] Response status:', response.status);
+            console.log('[TEFAS Service] Response headers:', Object.fromEntries(response.headers.entries()));
+            console.log('[TEFAS Service] Response preview:', responseText.substring(0, 200));
+
             // Check if response is HTML (error page)
             if (responseText.startsWith('<!DOCTYPE') || responseText.startsWith('<html')) {
+                console.error('[TEFAS Service] TEFAS API returned HTML error page');
+                console.error('[TEFAS Service] Full response:', responseText);
                 throw new Error('TEFAS API returned HTML instead of JSON - access blocked');
             }
 
@@ -103,7 +108,7 @@ export class TEFASService {
                     fundMap.set(code, {
                         fon_kodu: code,
                         fon_adi: name,
-                        fon_turu: null // Type info not available in this endpoint
+                        fon_turu: undefined // Type info not available in this endpoint
                     });
                 }
             });
@@ -138,7 +143,7 @@ export class TEFASService {
                     'sfontur': '',
                     'kurucukod': '',
                     'fonkod': fundCode.toUpperCase(),
-                    'bastarih': this.formatDate(new Date()),
+                    'bastarih': this.formatDate(new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)), // 1 gün önce
                     'bittarih': this.formatDate(new Date()),
                     'fonturkod': ''
                 }).toString()
@@ -150,8 +155,14 @@ export class TEFASService {
 
             const responseText = await response.text();
 
+            console.log('[TEFAS Service] Response status:', response.status);
+            console.log('[TEFAS Service] Response headers:', Object.fromEntries(response.headers.entries()));
+            console.log('[TEFAS Service] Response preview:', responseText.substring(0, 200));
+
             // Check if response is HTML (error page)
             if (responseText.startsWith('<!DOCTYPE') || responseText.startsWith('<html')) {
+                console.error('[TEFAS Service] TEFAS API returned HTML error page');
+                console.error('[TEFAS Service] Full response:', responseText);
                 throw new Error('TEFAS API returned HTML instead of JSON - access blocked');
             }
 

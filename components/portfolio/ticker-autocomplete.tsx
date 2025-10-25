@@ -33,6 +33,7 @@ interface TickerAutocompleteProps {
   assetType: "STOCK" | "FUND";
   placeholder?: string;
   disabled?: boolean;
+  className?: string;
 }
 
 export function TickerAutocomplete({
@@ -41,7 +42,8 @@ export function TickerAutocomplete({
   onTickerSelect,
   assetType,
   placeholder = "Ticker ara...",
-  disabled = false
+  disabled = false,
+  className = ""
 }: TickerAutocompleteProps) {
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -97,23 +99,23 @@ export function TickerAutocomplete({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between text-left"
+          className={`w-full justify-between ${className}`}
           disabled={disabled}
         >
-          <span className="truncate flex-1 min-w-0 mr-2" title={value || placeholder}>
-            {(value && value.length > 40) ? value.substring(0, 40) + '...' : (value || placeholder)}
-          </span>
-          <ChevronsUpDown className="h-3 w-3 shrink-0 opacity-50 ml-1" />
+          <div className="flex-1 truncate text-left">
+            {value || placeholder}
+          </div>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[400px] p-0">
-        <Command shouldFilter={false}>
+      <PopoverContent className="w-[500px] p-0" align="start" side="bottom" collisionPadding={8}>
+        <Command shouldFilter={false} className="max-h-[300px]">
           <CommandInput
             placeholder={`${assetType === 'STOCK' ? 'BIST' : 'TEFAS'} ticker ara... (min 2 karakter)`}
             value={searchQuery}
             onValueChange={setSearchQuery}
           />
-          <CommandList>
+          <CommandList className="max-h-[250px] overflow-y-scroll">
             <CommandEmpty>
               {isLoading ? (
                 <div className="flex items-center justify-center py-6">
@@ -137,7 +139,7 @@ export function TickerAutocomplete({
                     key={ticker.id}
                     value={ticker.symbol}
                     onSelect={() => handleSelect(ticker)}
-                    className="cursor-pointer"
+                    className="cursor-pointer p-3 hover:bg-accent/50 transition-colors"
                   >
                     <Check
                       className={cn(
@@ -154,20 +156,8 @@ export function TickerAutocomplete({
                           </span>
                         )}
                       </div>
-                      <span
-                        className="text-sm text-muted-foreground"
-                        title={ticker.name}
-                        style={{
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
-                            wordBreak: 'break-word',
-                            lineHeight: '1.2',
-                            maxHeight: '2.4em'
-                        }}
-                      >
-                        {ticker.name}
+                      <span className="text-sm text-muted-foreground truncate break-words" title={ticker.name}>
+                        {ticker.name.length > 40 ? `${ticker.name.substring(0, 40)}...` : ticker.name}
                       </span>
                     </div>
                   </CommandItem>
