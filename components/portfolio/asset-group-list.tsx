@@ -45,13 +45,15 @@ interface AssetGroupListProps {
     currency: string;
     onAssetClick: (asset: Asset) => void;
     formatCurrency: (amount: number | null | undefined) => string;
+    onGoldGroupClick?: () => void;
 }
 
 export function AssetGroupList({
     assets,
     currency,
     onAssetClick,
-    formatCurrency
+    formatCurrency,
+    onGoldGroupClick
 }: AssetGroupListProps) {
     const [openGroups, setOpenGroups] = useState<Set<string>>(new Set(["cash", "gold", "stock"]));
 
@@ -210,7 +212,13 @@ export function AssetGroupList({
                     <Collapsible
                         key={group.key}
                         open={isOpen}
-                        onOpenChange={() => toggleGroup(group.key)}
+                        onOpenChange={() => {
+                            toggleGroup(group.key);
+                            // Gold grubu için özel callback
+                            if (group.key === 'gold' && onGoldGroupClick) {
+                                onGoldGroupClick();
+                            }
+                        }}
                     >
                         <Card className="overflow-hidden">
                             <CollapsibleTrigger asChild>

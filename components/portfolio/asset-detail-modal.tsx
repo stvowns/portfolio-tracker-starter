@@ -30,7 +30,6 @@ import {
     AlertTriangle
 } from "lucide-react";
 import { AddTransactionDialog } from "./add-transaction-dialog";
-import { GoldPieChart } from "./gold-pie-chart";
 import { GOLD_TYPES, SILVER_TYPES } from "@/lib/services/gold-price-service";
 
 interface Transaction {
@@ -89,11 +88,8 @@ export function AssetDetailModal({
         pricePerUnit?: number;
         quantity?: number;
     } | null>(null);
-    const [goldPrices, setGoldPrices] = useState<{ [key: string]: number }>({});
-    const [goldPricesLoading, setGoldPricesLoading] = useState(false);
     const [silverPrices, setSilverPrices] = useState<{ [key: string]: number }>({});
     const [silverPricesLoading, setSilverPricesLoading] = useState(false);
-    const [allGoldHoldings, setAllGoldHoldings] = useState<any[]>([]);
 
     const formatCurrency = (amount: number | null | undefined) => {
         if (amount === null || amount === undefined) {
@@ -175,26 +171,6 @@ export function AssetDetailModal({
         }
     }, [asset?.id]);
 
-    const fetchGoldPrices = useCallback(async () => {
-        setGoldPricesLoading(true);
-        try {
-            const response = await fetch('/api/gold/prices');
-            const data = await response.json();
-
-            if (data.success) {
-                const prices: { [key: string]: number } = {};
-                data.data.forEach((gold: any) => {
-                    prices[gold.type.id] = gold.price;
-                });
-                setGoldPrices(prices);
-            }
-        } catch (error) {
-            console.error('Error fetching gold prices:', error);
-        } finally {
-            setGoldPricesLoading(false);
-        }
-    }, []);
-
     const fetchSilverPrices = useCallback(async () => {
         setSilverPricesLoading(true);
         try {
@@ -212,31 +188,6 @@ export function AssetDetailModal({
             console.error('Error fetching silver prices:', error);
         } finally {
             setSilverPricesLoading(false);
-        }
-    }, []);
-
-    const fetchAllGoldHoldings = useCallback(async () => {
-        try {
-            const response = await fetch('/api/portfolio/assets?assetType=GOLD');
-            if (response.ok) {
-                const result = await response.json();
-                if (result.success && result.data && Array.isArray(result.data.assets)) {
-                    const validAssets = result.data.assets.filter((asset: any) => 
-                        asset && 
-                        asset.holdings && 
-                        asset.holdings.netQuantity > 0 &&
-                        asset.assetName
-                    );
-                    console.log('Filtered gold assets:', validAssets);
-                    setAllGoldHoldings(validAssets);
-                } else {
-                    console.warn('Invalid response structure:', result);
-                    setAllGoldHoldings([]);
-                }
-            }
-        } catch (error) {
-            console.error('Error fetching gold holdings:', error);
-            setAllGoldHoldings([]);
         }
     }, []);
 
@@ -268,17 +219,12 @@ export function AssetDetailModal({
             // For now, default to TRY since currency field is not in the Asset interface
             setCurrency("TRY");
 
-            // Altın varlığı ise altın fiyatlarını ve tüm altın varlıklarını çek
-            if (asset.assetType.toLowerCase() === 'gold') {
-                fetchGoldPrices();
-                fetchAllGoldHoldings();
-            }
             // Gümüş varlığı ise gümüş fiyatlarını da çek
             if (asset.assetType.toLowerCase() === 'silver') {
                 fetchSilverPrices();
             }
         }
-    }, [isOpen, asset?.id, fetchTransactions, fetchGoldPrices, fetchAllGoldHoldings, asset?.assetType]);
+    }, [isOpen, asset?.id, fetchTransactions, fetchSilverPrices, asset?.assetType]);
 
     const handleTransactionAdded = async (transactionData?: { transactionType: "BUY" | "SELL"; quantity: number; pricePerUnit: number; notes?: string }) => {
         // Transaction listesini backend'den yeniden çek (gerçek veriyi almak için)
@@ -432,76 +378,7 @@ export function AssetDetailModal({
                         </div>
                     )}
 
-                    {/* Gold Pie Chart - Sadece altın varlıkları için */}
-                    {asset.assetType.toLowerCase() === 'gold' && allGoldHoldings.length > 1 && (
-                        <GoldPieChart 
-                            goldHoldings={allGoldHoldings}
-                            currency={currency}
-                        />
-                    )}
-
-                    {/* Altın Fiyatları - Sadece altın varlıkları için */}
-                    {asset.assetType.toLowerCase() === 'gold' && (
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h3 className="text-base sm:text-lg font-semibold">Diğer Altın Fiyatları</h3>
-                                    <p className="text-xs sm:text-sm text-muted-foreground">
-                                        Anlık altın çeşitleri fiyatları
-                                    </p>
-                                </div>
-                                <Button
-                                    onClick={fetchGoldPrices}
-                                    disabled={goldPricesLoading}
-                                    variant="outline"
-                                    size="sm"
-                                >
-                                    {goldPricesLoading ? 'Yükleniyor...' : 'Yenile'}
-                                </Button>
-                            </div>
-
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-                                {GOLD_TYPES.map((goldType) => {
-                                    const price = goldPrices[goldType.id];
-                                    const isCurrentAsset = asset.name.toLowerCase().includes(goldType.name.toLowerCase()) ||
-                                                           asset.name.toLowerCase().includes(goldType.id);
-
-                                    return (
-                                        <Card
-                                            key={goldType.id}
-                                            className={`${isCurrentAsset ? 'ring-2 ring-primary' : ''} ${!price ? 'opacity-50' : ''}`}
-                                        >
-                                            <CardContent className="p-3">
-                                                <div className="text-center">
-                                                    <div className="text-xs text-muted-foreground mb-1">
-                                                        {goldType.name}
-                                                    </div>
-                                                    <div className="text-sm font-bold">
-                                                        {price
-                                                            ? new Intl.NumberFormat('tr-TR', {
-                                                                style: 'currency',
-                                                                currency: 'TRY',
-                                                                minimumFractionDigits: 2
-                                                            }).format(price)
-                                                            : 'Yükleniyor...'
-                                                        }
-                                                    </div>
-                                                    <div className="text-[10px] text-muted-foreground mt-1">
-                                                        {goldType.grams} gram
-                                                    </div>
-                                                    {isCurrentAsset && (
-                                                        <Badge variant="default" className="text-[10px] mt-1 h-4">
-                                                            Bu varlık
-                                                        </Badge>
-                                                    )}
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    )}
+                    
 
                     {/* Gümüş Fiyatları - Sadece gümüş varlıkları için */}
                     {asset.assetType.toLowerCase() === 'silver' && (

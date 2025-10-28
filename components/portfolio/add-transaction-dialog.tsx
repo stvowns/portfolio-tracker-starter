@@ -183,12 +183,12 @@ export function AddTransactionDialog({
             case "GOLD":
                 return GOLD_TYPES.map(g => ({
                     value: g.name,
-                    label: `${g.name} (${g.grams}g)`
+                    label: g.name
                 }));
             case "SILVER":
                 return SILVER_TYPES.map(s => ({
                     value: s.name,
-                    label: `${s.name} (${s.grams}g)`
+                    label: s.name
                 }));
             case "CASH":
                 return [

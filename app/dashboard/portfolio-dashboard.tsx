@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AssetDetailModal } from "@/components/portfolio/asset-detail-modal";
 import { PortfolioPieChart } from "@/components/portfolio/portfolio-pie-chart";
 import { AssetGroupList } from "@/components/portfolio/asset-group-list";
+import { GoldPieChart } from "@/components/portfolio/gold-pie-chart";
 import { Card, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -95,6 +96,8 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
     const [isAssetDetailOpen, setIsAssetDetailOpen] = useState(false);
     const [isResetting, setIsResetting] = useState(false);
     const [isSyncingPrices, setIsSyncingPrices] = useState(false);
+    const [showGoldPieChart, setShowGoldPieChart] = useState(false);
+    const [goldHoldings, setGoldHoldings] = useState<Asset[]>([]);
 
     const USD_TRY_RATE = 35.12; // TODO: Gerçek zamanlı kur çekebiliriz
 
@@ -171,6 +174,19 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
     const handleAssetClick = (asset: Asset) => {
         setSelectedAsset(asset);
         setIsAssetDetailOpen(true);
+    };
+
+    const handleGoldGroupClick = () => {
+        const goldAssets = assets.filter(asset => 
+            asset.assetType.toLowerCase() === 'gold' && 
+            asset.holdings && 
+            asset.holdings.netQuantity > 0
+        );
+        
+        if (goldAssets.length > 1) {
+            setGoldHoldings(goldAssets);
+            setShowGoldPieChart(true);
+        }
     };
 
     const handleResetPortfolio = async () => {
@@ -450,7 +466,36 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
                         currency={currency}
                         onAssetClick={handleAssetClick}
                         formatCurrency={formatCurrency}
+                        onGoldGroupClick={handleGoldGroupClick}
                     />
+                </div>
+            )}
+
+            {/* Gold Pie Chart Modal */}
+            {showGoldPieChart && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-background rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+                        <div className="p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <div>
+                                    <h2 className="text-xl font-semibold">Altın Varlık Dağılımı</h2>
+                                    <p className="text-sm text-muted-foreground">
+                                        Sahip olunan altın çeşitlerinin dağılımı
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => setShowGoldPieChart(false)}
+                                    className="text-muted-foreground hover:text-foreground"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                            <GoldPieChart 
+                                goldHoldings={goldHoldings}
+                                currency={currency as "TRY" | "USD" | "EUR"}
+                            />
+                        </div>
+                    </div>
                 </div>
             )}
 

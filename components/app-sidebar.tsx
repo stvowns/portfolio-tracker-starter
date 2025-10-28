@@ -7,6 +7,7 @@ import { useSession } from "@/lib/auth-client"
 import {
   IconCamera,
   IconChartBar,
+  IconCoin,
   IconDashboard,
   IconDatabase,
   IconFileAi,
@@ -47,6 +48,11 @@ const staticData = {
       title: "Performans",
       url: "/performance",
       icon: IconChartBar,
+    },
+    {
+      title: "Altın Fiyatları",
+      url: "/debug/gold-prices",
+      icon: IconCoin,
     },
     {
       title: "AI Assistant",
