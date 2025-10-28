@@ -1,13 +1,26 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { Bot, MessageSquare, DollarSign, Coins, Moon, Sun, Database, RefreshCw } from "lucide-react";
 import { useTheme } from "next-themes";
 import Link from "next/link";
 import { AddTransactionDialog } from "@/components/portfolio/add-transaction-dialog";
-import { PortfolioDashboard } from "./portfolio-dashboard";
 import { useToast } from "@/hooks/use-toast";
+
+// Dynamic import to avoid hydration issues with browser extensions
+const PortfolioDashboard = dynamic(() => import("./portfolio-dashboard").then(mod => ({ default: mod.PortfolioDashboard })), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center py-12">
+      <div className="text-center">
+        <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-muted-foreground" />
+        <p className="text-muted-foreground">Dashboard yükleniyor...</p>
+      </div>
+    </div>
+  )
+});
 
 // Suppress hydration warnings for Dark Reader and other browser extensions
 if (typeof window !== 'undefined') {
@@ -17,9 +30,13 @@ if (typeof window !== 'undefined') {
       // Ignore hydration errors from browser extensions
       if (
         args[0].includes('data-darkreader') ||
+        args[0].includes('data-darkreader-inline') ||
         args[0].includes('Hydration') ||
         args[0].includes('did not match') ||
-        args[0].includes('suppressHydrationWarning')
+        args[0].includes('suppressHydrationWarning') ||
+        args[0].includes('A tree hydrated but some attributes') ||
+        args[0].includes('server rendered HTML') ||
+        args[0].includes("didn't match the client properties")
       ) {
         return;
       }
