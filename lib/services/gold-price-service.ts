@@ -39,14 +39,15 @@ export interface GoldPrice {
   type: GoldType;
   price: number;
   priceFormatted: string;
+  previousPrice?: number;
   changePercent?: number;
   changeAmount?: number;
 }
 
 /**
- * Fetch gram gold price from Yahoo Finance
+ * Fetch gram gold price from Yahoo Finance with previous close
  */
-async function fetchGramGoldPrice(): Promise<number> {
+async function fetchGramGoldPrice(): Promise<{ current: number; previous: number }> {
   try {
     // Fetch USD/TRY rate
     let usdTryRate = 34; // Fallback
@@ -63,7 +64,7 @@ async function fetchGramGoldPrice(): Promise<number> {
     }
 
     // Fetch gold price
-    const url = 'https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=1d&range=1d';
+    const url = 'https://query1.finance.yahoo.com/v8/finance/chart/GC=F?interval=1d&range=2d';
     const response = await fetch(url);
     const data = await response.json();
 
@@ -74,12 +75,17 @@ async function fetchGramGoldPrice(): Promise<number> {
     const result = data.chart.result[0];
     const meta = result.meta;
     const currentPriceUSD = meta.regularMarketPrice;
+    const previousCloseUSD = meta.chartPreviousClose;
 
     // Convert to TRY (1 ounce = 31.1035 grams)
     const GRAMS_PER_OUNCE = 31.1035;
-    const gramPriceTRY = (currentPriceUSD / GRAMS_PER_OUNCE) * usdTryRate;
+    const currentGramPriceTRY = (currentPriceUSD / GRAMS_PER_OUNCE) * usdTryRate;
+    const previousGramPriceTRY = (previousCloseUSD / GRAMS_PER_OUNCE) * usdTryRate;
 
-    return gramPriceTRY;
+    return {
+      current: currentGramPriceTRY,
+      previous: previousGramPriceTRY
+    };
   } catch (error) {
     console.error('Error fetching gram gold price:', error);
     throw error;
@@ -90,19 +96,25 @@ async function fetchGramGoldPrice(): Promise<number> {
  * Calculate all gold prices based on gram price
  */
 export async function getAllGoldPrices(): Promise<GoldPrice[]> {
-  const gramPrice = await fetchGramGoldPrice();
+  const gramPrices = await fetchGramGoldPrice();
 
   const prices: GoldPrice[] = GOLD_TYPES.map(goldType => {
-    const price = gramPrice * goldType.grams;
+    const currentPrice = gramPrices.current * goldType.grams;
+    const previousPrice = gramPrices.previous * goldType.grams;
+    const changeAmount = currentPrice - previousPrice;
+    const changePercent = previousPrice > 0 ? (changeAmount / previousPrice) * 100 : 0;
 
     return {
       type: goldType,
-      price,
+      price: currentPrice,
+      previousPrice,
+      changeAmount,
+      changePercent,
       priceFormatted: new Intl.NumberFormat('tr-TR', {
         style: 'currency',
         currency: 'TRY',
         minimumFractionDigits: 2
-      }).format(price)
+      }).format(currentPrice)
     };
   });
 

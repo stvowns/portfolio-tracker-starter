@@ -28,6 +28,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import { TickerAutocomplete } from "./ticker-autocomplete";
+import { GOLD_TYPES, SILVER_TYPES } from "@/lib/services/gold-price-service";
 
 // Form schema
 const transactionSchema = z.object({
@@ -157,11 +158,7 @@ export function AddTransactionDialog({
     // Altın/Gümüş varlık adı değiştiğinde otomatik fiyat getir
     useEffect(() => {
         if ((assetType === "GOLD" || assetType === "SILVER") && assetName) {
-            // Sadece Gram Altın veya Gram Gümüş seçildiğinde otomatik fiyat getir
-            if ((assetType === "GOLD" && assetName === "Gram Altın") ||
-                (assetType === "SILVER" && assetName === "Gram Gümüş")) {
-                fetchMarketPriceForPreciousMetal(assetType);
-            }
+            fetchMarketPriceForPreciousMetal(assetType, assetName);
         }
     }, [assetName, assetType]);
 
@@ -184,27 +181,15 @@ export function AddTransactionDialog({
     const getAssetOptions = (type: string) => {
         switch (type) {
             case "GOLD":
-                return [
-                    { value: "Gram Altın", label: "Gram Altın" },
-                    { value: "Çeyrek Altın", label: "Çeyrek Altın" },
-                    { value: "Yarım Altın", label: "Yarım Altın" },
-                    { value: "Tam Altın", label: "Tam Altın" },
-                    { value: "Cumhuriyet Altını", label: "Cumhuriyet Altını" },
-                    { value: "Ata Altın", label: "Ata Altın" },
-                    { value: "Has Altın (24 Ayar)", label: "Has Altın (24 Ayar)" },
-                    { value: "14 Ayar Bilezik", label: "14 Ayar Bilezik" },
-                    { value: "18 Ayar Bilezik", label: "18 Ayar Bilezik" },
-                    { value: "22 Ayar Bilezik", label: "22 Ayar Bilezik" },
-                    { value: "Reşat Altını", label: "Reşat Altını" },
-                    { value: "Hamit Altını", label: "Hamit Altını" }
-                ];
+                return GOLD_TYPES.map(g => ({
+                    value: g.name,
+                    label: `${g.name} (${g.grams}g)`
+                }));
             case "SILVER":
-                return [
-                    { value: "Gram Gümüş", label: "Gram Gümüş" },
-                    { value: "Gümüş Külçe", label: "Gümüş Külçe" },
-                    { value: "Gümüş Bilezik", label: "Gümüş Bilezik" },
-                    { value: "Gümüş Ons", label: "Gümüş Ons" }
-                ];
+                return SILVER_TYPES.map(s => ({
+                    value: s.name,
+                    label: `${s.name} (${s.grams}g)`
+                }));
             case "CASH":
                 return [
                     { value: "Nakit TRY", label: "💵 Türk Lirası" },
@@ -250,26 +235,65 @@ export function AddTransactionDialog({
 
     // Fetch price when ticker is selected
     // Fetch gold/silver prices from market prices API
-    const fetchMarketPriceForPreciousMetal = async (assetType: "GOLD" | "SILVER") => {
+    const fetchMarketPriceForPreciousMetal = async (assetType: "GOLD" | "SILVER", assetName: string) => {
         setIsFetchingPrice(true);
         try {
-            const symbol = assetType === "GOLD" ? "GOLD" : "SILVER";
-            const response = await fetch(`/api/prices/latest?symbol=${symbol}&type=COMMODITY`);
+            let totalPrice = 0;
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+            if (assetType === "GOLD") {
+                // Altın fiyatlarını API'den çek
+                const response = await fetch('/api/gold/prices');
+                const data = await response.json();
+
+                if (data.success && data.data) {
+                    // Seçilen altın türünü bul
+                    const selectedGold = data.data.find((g: any) => g.type.name === assetName);
+                    if (selectedGold) {
+                        totalPrice = selectedGold.price;
+                    } else {
+                        // Eşleşme bulunamazsa gram fiyatını al ve hesapla
+                        const gramGold = data.data.find((g: any) => g.type.id === 'gram');
+                        if (gramGold) {
+                            // AssetName'den gramajı hesapla (basit eşleştirme)
+                            const goldType = GOLD_TYPES.find(g => g.name === assetName);
+                            if (goldType) {
+                                totalPrice = gramGold.price * goldType.grams;
+                            }
+                        }
+                    }
+                }
+            } else if (assetType === "SILVER") {
+                // Gümüş fiyatlarını API'den çek
+                const response = await fetch('/api/silver/prices');
+                const data = await response.json();
+
+                if (data.success && data.data) {
+                    // Seçilen gümüş türünü bul
+                    const selectedSilver = data.data.find((s: any) => s.type.name === assetName);
+                    if (selectedSilver) {
+                        totalPrice = selectedSilver.price;
+                    } else {
+                        // Eşleşme bulunamazsa gram fiyatını al ve hesapla
+                        const gramSilver = data.data.find((s: any) => s.type.id === 'gram');
+                        if (gramSilver) {
+                            // AssetName'den gramajı hesapla (basit eşleştirme)
+                            const silverType = SILVER_TYPES.find(s => s.name === assetName);
+                            if (silverType) {
+                                totalPrice = gramSilver.price * silverType.grams;
+                            }
+                        }
+                    }
+                }
             }
 
-            const data = await response.json();
-
-            if (data.success && data.data?.currentPrice) {
-                const price = Math.round(data.data.currentPrice * 100) / 100; // 2 ondalık basamak
+            if (totalPrice > 0) {
+                const price = Math.round(totalPrice * 100) / 100; // 2 ondalık basamak
                 setValue("pricePerUnit", price);
 
                 const metalName = assetType === "GOLD" ? "Altın" : "Gümüş";
                 if (showSuccessNotifications) {
-                    toast.success(`${metalName} gram fiyatı alındı`, {
-                        description: `₺${price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/gram`
+                    toast.success(`${assetName} fiyatı alındı`, {
+                        description: `₺${price.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                     });
                 }
 

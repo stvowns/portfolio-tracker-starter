@@ -78,56 +78,66 @@ export function AssetCard({ asset, currency, onAssetClick, dailyChange }: AssetC
     const dailyChangeColor = (dailyChange ?? 0) >= 0 ? "text-green-600" : "text-red-600";
 
     return (
-        <Card 
-            className="hover:shadow-sm transition-shadow cursor-pointer"
-            onClick={onAssetClick}
-        >
-            <CardContent className="p-1.5">
-                <div className="grid grid-cols-3 gap-3">
-                    {/* Left Column - Name & Current Price */}
-                    <div className="flex flex-col gap-0.5">
-                        <h3 className="font-semibold text-xs leading-tight truncate break-words" title={asset.name}>
-                            {asset.name.length > 40 ? `${asset.name.substring(0, 40)}...` : asset.name}
+        <div className="grid grid-cols-5 gap-2" onClick={onAssetClick}>
+            {/* Asset Name */}
+            <Card className="hover:shadow-sm transition-shadow cursor-pointer">
+                <CardContent className="p-2">
+                    <div className="text-xs text-muted-foreground mb-1">Varlık</div>
+                    <div className="flex items-center justify-between">
+                        <h3 className="font-semibold text-xs truncate" title={asset.name}>
+                            {asset.name.length > 20 ? `${asset.name.substring(0, 20)}...` : asset.name}
                         </h3>
-                        <div className="flex items-baseline gap-1">
-                            <span className="text-xs font-medium">
-                                {priceDisplayText}
-                            </span>
-                            {dailyChange !== undefined && dailyChange !== 0 && (
-                                <span className={`text-[10px] ${dailyChangeColor}`}>
-                                    {formatPercent(dailyChange)}
-                                </span>
-                            )}
-                        </div>
+                        {asset.symbol && (
+                            <Badge variant="outline" className="text-[10px] h-4 px-1 ml-1">
+                                {asset.symbol}
+                            </Badge>
+                        )}
                     </div>
+                </CardContent>
+            </Card>
 
-                    {/* Middle Column - Quantity & Cost */}
-                    <div className="flex flex-col gap-0.5">
-                        <div>
-                            <span className="text-xs font-medium">
-                                {formatQuantity(asset.holdings.netQuantity)}
-                            </span>
-                            <span className="text-xs text-muted-foreground ml-1">Adet</span>
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                            Maliyet: <span className="text-foreground font-medium">
-                                {formatCurrency(asset.holdings.averagePrice)}
-                            </span>
-                        </div>
+            {/* Quantity */}
+            <Card className="hover:shadow-sm transition-shadow cursor-pointer">
+                <CardContent className="p-2">
+                    <div className="text-xs text-muted-foreground mb-1">Adet</div>
+                    <div className="text-xs font-semibold">
+                        {formatQuantity(asset.holdings.netQuantity)}
                     </div>
+                </CardContent>
+            </Card>
 
-                    {/* Right Column - Total Value & P/L */}
-                    <div className="flex flex-col gap-1 text-right">
-                        <p className="text-sm font-semibold">
-                            {formatCurrency(currentValue)}
-                        </p>
-                        <div className={`text-xs ${profitLoss === 0 ? "text-muted-foreground" : profitColor}`}>
-                            <span className="font-semibold">{formatCurrency(profitLoss)}</span>
-                            <span className="ml-1">{formatPercent(profitLossPercent)}</span>
-                        </div>
+            {/* Average Cost */}
+            <Card className="hover:shadow-sm transition-shadow cursor-pointer">
+                <CardContent className="p-2">
+                    <div className="text-xs text-muted-foreground mb-1">Ort. Maliyet</div>
+                    <span className="text-xs font-semibold">{formatCurrency(asset.holdings.averagePrice)}</span>
+                </CardContent>
+            </Card>
+
+            {/* Total Value */}
+            <Card className="hover:shadow-sm transition-shadow cursor-pointer">
+                <CardContent className="p-2">
+                    <div className="text-xs text-muted-foreground mb-1">Değer</div>
+                    <div className="text-sm font-bold">
+                        {formatCurrency(currentValue)}
                     </div>
-                </div>
-            </CardContent>
-        </Card>
+                </CardContent>
+            </Card>
+
+            {/* Profit/Loss */}
+            <Card className="hover:shadow-sm transition-shadow cursor-pointer">
+                <CardContent className="p-2">
+                    <div className="text-xs text-muted-foreground mb-1">Kar/Zarar</div>
+                    <div className={`text-xs font-bold ${profitLoss === 0 ? "text-muted-foreground" : profitColor}`}>
+                        {formatCurrency(profitLoss)}
+                    </div>
+                    {profitLossPercent !== 0 && (
+                        <div className={`text-[10px] font-medium ${profitColor} mt-0.5`}>
+                            {formatPercent(profitLossPercent)}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
     );
 }

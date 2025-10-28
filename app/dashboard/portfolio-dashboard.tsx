@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { AssetDetailModal } from "@/components/portfolio/asset-detail-modal";
 import { PortfolioPieChart } from "@/components/portfolio/portfolio-pie-chart";
 import { AssetGroupList } from "@/components/portfolio/asset-group-list";
-import { FundPerformance } from "@/components/portfolio/fund-performance";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,68 +21,22 @@ import {
 import {
     AlertCircle,
     Wallet,
-    TrendingUp,
-    TrendingDown,
-    LucideIcon,
-    Calendar,
-    PieChart,
-    BarChart3,
-    Trophy,
     AlertTriangle,
-    Shield,
-    Activity,
-    Zap,
-    Target,
     Trash2,
     RefreshCw
 } from "lucide-react";
 import { toast } from "sonner";
-
-interface StatCardProps {
-    title: string;
-    value: string;
-    description: string;
-    icon: LucideIcon;
-    iconColor?: string;
-    valueColor?: string;
-    descriptionColor?: string;
-}
-
-const StatCard: React.FC<StatCardProps> = ({ 
-    title, 
-    value, 
-    description, 
-    icon: Icon,
-    iconColor = "text-muted-foreground",
-    valueColor,
-    descriptionColor = "text-muted-foreground"
-}) => (
-    <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{title}</CardTitle>
-            <Icon className={`h-4 w-4 ${iconColor}`} />
-        </CardHeader>
-        <CardContent>
-            <div className={`text-2xl font-bold ${valueColor || ''}`}>
-                {value}
-            </div>
-            <p className={`text-xs ${descriptionColor}`}>
-                {description}
-            </p>
-        </CardContent>
-    </Card>
-);
 
 // Real API data fetching
 async function fetchPortfolioAssets() {
     try {
         const response = await fetch("/api/portfolio/assets");
         if (!response.ok) throw new Error("Assets API failed");
-        
+
         const result = await response.json();
         return result.success ? result.data.assets : [];
-    } catch (error) {
-        console.error("Error fetching portfolio assets:", error);
+    } catch {
+        console.error("Error fetching portfolio assets:");
         return [];
     }
 }
@@ -156,13 +109,6 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
             style: 'currency',
             currency: currency
         }).format(displayAmount);
-    };
-
-    const formatPercent = (percent: number | null | undefined) => {
-        if (percent === null || percent === undefined) {
-            return '-';
-        }
-        return `${percent >= 0 ? '+' : ''}${percent.toFixed(2)}%`;
     };
 
     const getAssetTypeLabel = (type: string): string => {
@@ -317,9 +263,6 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
         );
     }
 
-    const isProfit = (summary?.totalProfitLoss ?? 0) >= 0;
-    const profitColor = isProfit ? 'text-green-600' : 'text-red-600';
-
     // Asset Type Distribution with Currency breakdown for CASH
     const getAssetDistribution = () => {
         if (!assets.length) return [];
@@ -387,96 +330,12 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
         });
     };
 
-    // Performance Details
-    const getPerformanceDetails = () => {
-        if (!assets.length) return { best: null, worst: null };
-        
-        const validAssets = assets.filter(a => 
-            a.holdings.profitLossPercent !== null && 
-            a.holdings.profitLossPercent !== undefined && 
-            a.holdings.profitLossPercent !== 0
-        );
-        if (!validAssets.length) return { best: null, worst: null };
-        
-        const sortedByPerformance = [...validAssets].sort(
-            (a, b) => (b.holdings.profitLossPercent ?? 0) - (a.holdings.profitLossPercent ?? 0)
-        );
-        
-        return {
-            best: sortedByPerformance[0] || null,
-            worst: sortedByPerformance[sortedByPerformance.length - 1] || null
-        };
-    };
-
-    // Risk Distribution
-    const getRiskDistribution = () => {
-        if (!assets.length) return { low: 0, medium: 0, high: 0 };
-        
-        const totalValue = summary?.totalValue || 0;
-        if (totalValue === 0) return { low: 0, medium: 0, high: 0 };
-        
-        const riskMap = {
-            low: 0,
-            medium: 0,
-            high: 0
-        };
-        
-        const riskLevels: Record<string, 'low' | 'medium' | 'high'> = {
-            'gold': 'low',
-            'bond': 'low',
-            'fund': 'low',
-            'stock': 'medium',
-            'currency': 'medium',
-            'silver': 'medium',
-            'crypto': 'high',
-            'commodity': 'high',
-            'real_estate': 'medium'
-        };
-        
-        assets.forEach(asset => {
-            const value = asset.holdings.currentValue || 0;
-            const risk = riskLevels[asset.assetType] || 'medium';
-            riskMap[risk] += value;
-        });
-        
-        return {
-            low: (riskMap.low / totalValue) * 100,
-            medium: (riskMap.medium / totalValue) * 100,
-            high: (riskMap.high / totalValue) * 100
-        };
-    };
-
     // Total Transactions Count
     const getTotalTransactions = () => {
         return assets.reduce((sum, asset) => sum + (asset.holdings.totalTransactions || 0), 0);
     };
 
-    // Most Active Asset
-    const getMostActiveAsset = () => {
-        if (!assets.length) return null;
-        return assets.reduce((max, asset) => 
-            (asset.holdings.totalTransactions || 0) > (max.holdings.totalTransactions || 0) ? asset : max
-        , assets[0]);
-    };
-
-    // Monthly Performance (simplified - based on current profit/loss)
-    const getMonthlyPerformance = () => {
-        const currentDate = new Date();
-        const monthName = currentDate.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
-        
-        return {
-            monthName,
-            profit: summary?.totalProfitLoss || 0,
-            profitPercent: summary?.totalProfitLossPercent || 0
-        };
-    };
-
     const assetDistribution = getAssetDistribution();
-    const performanceDetails = getPerformanceDetails();
-    const riskDistribution = getRiskDistribution();
-    const totalTransactions = getTotalTransactions();
-    const mostActiveAsset = getMostActiveAsset();
-    const monthlyPerformance = getMonthlyPerformance();
 
     return (
         <div className="space-y-6 px-4 lg:px-6">
@@ -594,16 +453,6 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
                     />
                 </div>
             )}
-
-            {/* Yatırım Fonları Performansı */}
-            <FundPerformance
-                availableCash={
-                    assets
-                        .filter(a => a.assetType === "CASH" && a.name.includes("TRY"))
-                        .reduce((sum, asset) => sum + (asset.holdings.currentValue || 0), 0)
-                }
-                onTransactionAdded={refreshData}
-            />
 
             {/* Asset Detail Modal */}
             <AssetDetailModal 
