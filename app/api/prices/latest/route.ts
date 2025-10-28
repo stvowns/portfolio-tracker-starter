@@ -103,7 +103,7 @@ async function getGoldPrice() {
             success: true,
             data: {
                 symbol: 'GOLD',
-                name: 'Altın (Gram)',
+                name: 'Altın',
                 currentPrice: gramPriceTRY,
                 previousClose: previousGramTRY,
                 changeAmount: gramPriceTRY - previousGramTRY,
@@ -174,7 +174,7 @@ async function getSilverPrice() {
             success: true,
             data: {
                 symbol: 'SILVER',
-                name: 'Gümüş (Gram)',
+                name: 'Gümüş',
                 currentPrice: gramPriceTRY,
                 previousClose: previousGramTRY,
                 changeAmount: gramPriceTRY - previousGramTRY,

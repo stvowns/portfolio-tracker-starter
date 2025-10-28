@@ -20,7 +20,7 @@ def fetch_gold_price(symbol="gram-altin"):
         return {
             "success": True,
             "symbol": symbol,
-            "name": "Gram Altın",
+            "name": "Altın",
             "current_price": data.get("selling", 0),
             "previous_close": data.get("buying", 0),
             "change_percent": data.get("change_rate", 0),

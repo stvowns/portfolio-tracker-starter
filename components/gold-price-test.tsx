@@ -168,7 +168,7 @@ export function GoldPriceTest() {
                             {/* Gram TRY (Primary) */}
                             <div className="p-4 border-2 border-yellow-500 rounded-lg bg-yellow-50">
                                 <div className="flex items-center justify-between mb-2">
-                                    <span className="text-sm font-medium">💎 Gram Altın (TRY)</span>
+                                    <span className="text-sm font-medium">💎 Altın (TRY)</span>
                                     <Badge variant="outline" className="text-xs">
                                         {priceData.gram.currency}
                                     </Badge>
