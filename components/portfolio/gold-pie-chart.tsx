@@ -85,15 +85,30 @@ export function GoldPieChart({ goldHoldings, currency = "TRY" }: GoldPieChartPro
     fetchGoldPrices();
   }, []);
 
+  // Validate goldHoldings structure
+  if (!Array.isArray(goldHoldings)) {
+    console.warn('Invalid goldHoldings data:', goldHoldings);
+    return null;
+  }
+
   // Process gold holdings with current prices
   const processedHoldings = goldHoldings.map(holding => {
+    // Log the holding structure for debugging
+    if (!holding.assetName) {
+      console.warn('Gold holding without assetName:', holding);
+      return null;
+    }
+    
     // Find matching gold type
     const goldType = GOLD_TYPES.find(type => 
       holding.assetName.toLowerCase().includes(type.name.toLowerCase()) ||
       holding.assetName.toLowerCase().includes(type.id.toLowerCase())
     );
     
-    if (!goldType) return null;
+    if (!goldType) {
+      console.warn('No matching gold type found for:', holding.assetName);
+      return null;
+    }
 
     const currentPrice = goldPrices[goldType.id]?.price || 0;
     const previousPrice = goldPrices[goldType.id]?.previousPrice || currentPrice;

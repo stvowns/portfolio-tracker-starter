@@ -220,14 +220,23 @@ export function AssetDetailModal({
             const response = await fetch('/api/portfolio/assets?assetType=GOLD');
             if (response.ok) {
                 const result = await response.json();
-                if (result.success) {
-                    setAllGoldHoldings(result.data.assets.filter((asset: any) => 
-                        asset.holdings && asset.holdings.netQuantity > 0
-                    ));
+                if (result.success && result.data && Array.isArray(result.data.assets)) {
+                    const validAssets = result.data.assets.filter((asset: any) => 
+                        asset && 
+                        asset.holdings && 
+                        asset.holdings.netQuantity > 0 &&
+                        asset.assetName
+                    );
+                    console.log('Filtered gold assets:', validAssets);
+                    setAllGoldHoldings(validAssets);
+                } else {
+                    console.warn('Invalid response structure:', result);
+                    setAllGoldHoldings([]);
                 }
             }
         } catch (error) {
             console.error('Error fetching gold holdings:', error);
+            setAllGoldHoldings([]);
         }
     }, []);
 
