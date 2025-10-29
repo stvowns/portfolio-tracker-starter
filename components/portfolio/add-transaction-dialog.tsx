@@ -157,17 +157,17 @@ export function AddTransactionDialog({
 
     // Altın/Gümüş varlık adı değiştiğinde otomatik fiyat getir
     useEffect(() => {
-        if ((assetType === "GOLD" || assetType === "SILVER") && assetName) {
+        if ((assetType === "GOLD" || assetType === "SILVER") && assetName && showSuccessNotifications) {
             fetchMarketPriceForPreciousMetal(assetType, assetName);
         }
-    }, [assetName, assetType]);
+    }, [assetName, assetType, showSuccessNotifications]);
 
     // Kripto para seçildiğinde otomatik fiyat getir
     useEffect(() => {
-        if (assetType === "CRYPTO" && assetName && !showCustomInput) {
+        if (assetType === "CRYPTO" && assetName && !showCustomInput && showSuccessNotifications) {
             fetchMarketPriceForCrypto(assetName);
         }
-    }, [assetName, assetType, showCustomInput]);
+    }, [assetName, assetType, showCustomInput, showSuccessNotifications]);
 
     const getAssetNamePlaceholder = (type: string) => {
         switch (type) {
@@ -240,9 +240,14 @@ export function AddTransactionDialog({
         try {
             let totalPrice = 0;
 
+            // Create AbortController for timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
             if (assetType === "GOLD") {
                 // Altın fiyatlarını API'den çek
-                const response = await fetch('/api/gold/prices');
+                const response = await fetch('/api/gold/prices', { signal: controller.signal });
+                clearTimeout(timeoutId);
                 const data = await response.json();
 
                 if (data.success && data.data) {
@@ -264,7 +269,8 @@ export function AddTransactionDialog({
                 }
             } else if (assetType === "SILVER") {
                 // Gümüş fiyatlarını API'den çek
-                const response = await fetch('/api/silver/prices');
+                const response = await fetch('/api/silver/prices', { signal: controller.signal });
+                clearTimeout(timeoutId);
                 const data = await response.json();
 
                 if (data.success && data.data) {
@@ -330,7 +336,12 @@ export function AddTransactionDialog({
 
             const symbol = cryptoSymbolMap[cryptoName] || cryptoName;
 
-            const response = await fetch(`/api/prices/latest?symbol=${symbol}&type=CRYPTO`);
+            // Create AbortController for timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+            const response = await fetch(`/api/prices/latest?symbol=${symbol}&type=CRYPTO`, { signal: controller.signal });
+            clearTimeout(timeoutId);
             const data = await response.json();
 
             if (data.success && data.data?.currentPrice) {
@@ -370,7 +381,13 @@ export function AddTransactionDialog({
         setIsFetchingPrice(true);
         try {
             console.log('[Ticker Select] Fetching price for', ticker.symbol);
-            const response = await fetch(`/api/prices/latest?symbol=${ticker.symbol}&type=${assetType}`);
+
+            // Create AbortController for timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+            const response = await fetch(`/api/prices/latest?symbol=${ticker.symbol}&type=${assetType}`, { signal: controller.signal });
+            clearTimeout(timeoutId);
 
             if (response.ok) {
                 const data = await response.json();
@@ -405,17 +422,21 @@ export function AddTransactionDialog({
     };
 
     const onSubmit = async (data: TransactionFormData) => {
+        console.log('[Transaction] Form submitted with data:', data);
+        console.log('[Transaction] Available quantity:', availableQuantity);
+        console.log('[Transaction] Available cash:', availableCash);
+
         // Validation kontrolü
         if (!data.assetType) {
             toast.error("Varlık türü seçmelisiniz");
             return;
         }
-        
+
         if (!data.assetName) {
             toast.error("Varlık adı girmelisiniz");
             return;
         }
-        
+
         // SATIŞ VALİDASYONU - Portföydeki miktardan fazla satış yapılamaz
         if (data.transactionType === "SELL" && availableQuantity > 0) {
             if (data.quantity > availableQuantity) {
@@ -425,7 +446,7 @@ export function AddTransactionDialog({
                 return;
             }
         }
-        
+
         // ALIŞ VALİDASYONU - Kasadaki TL'den fazla alış yapılamaz
         if (data.transactionType === "BUY" && availableCash > 0) {
             const totalCost = data.quantity * data.pricePerUnit;
@@ -436,15 +457,29 @@ export function AddTransactionDialog({
                 return;
             }
         }
-        
+
         setIsLoading(true);
+        console.log('[Transaction] Loading started');
+
         try {
             // İlk önce asset'i oluştur veya bul
+            console.log('[Transaction] Creating/finding asset:', {
+                name: data.assetName,
+                symbol: selectedTickerSymbol || undefined,
+                assetType: data.assetType,
+                currency: data.currency || "TRY",
+            });
+
+            // Create AbortController for timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
             const assetResponse = await fetch("/api/portfolio/assets", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
+                signal: controller.signal,
                 body: JSON.stringify({
                     name: data.assetName,
                     symbol: selectedTickerSymbol || undefined,
@@ -453,23 +488,44 @@ export function AddTransactionDialog({
                 }),
             });
 
+            clearTimeout(timeoutId);
+
+            console.log('[Transaction] Asset API response status:', assetResponse.status);
+
             if (!assetResponse.ok) {
                 const errorData = await assetResponse.json();
-                const errorMsg = errorData.details 
-                    ? `${errorData.error}: ${errorData.details}` 
+                console.error('[Transaction] Asset API error:', errorData);
+                const errorMsg = errorData.details
+                    ? `${errorData.error}: ${errorData.details}`
                     : errorData.error || "Asset oluşturulurken hata oluştu";
                 throw new Error(errorMsg);
             }
 
             const assetData = await assetResponse.json();
+            console.log('[Transaction] Asset created/found:', assetData);
             const assetId = assetData.data.id;
 
             // Şimdi transaction'ı oluştur
+            console.log('[Transaction] Creating transaction with data:', {
+                assetId,
+                transactionType: data.transactionType,
+                quantity: data.quantity,
+                pricePerUnit: data.pricePerUnit,
+                transactionDate: data.transactionDate,
+                currency: data.currency || "TRY",
+                notes: data.notes,
+            });
+
+            // Create AbortController for timeout
+            const controller2 = new AbortController();
+            const timeoutId2 = setTimeout(() => controller2.abort(), 10000); // 10 second timeout
+
             const transactionResponse = await fetch("/api/portfolio/transactions", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
+                signal: controller2.signal,
                 body: JSON.stringify({
                     assetId,
                     transactionType: data.transactionType,
@@ -481,13 +537,19 @@ export function AddTransactionDialog({
                 }),
             });
 
+            clearTimeout(timeoutId2);
+
+            console.log('[Transaction] Transaction API response status:', transactionResponse.status);
+
             if (!transactionResponse.ok) {
                 const errorData = await transactionResponse.json();
+                console.error('[Transaction] Transaction API error:', errorData);
                 throw new Error(errorData.error || "Transaction oluşturulurken hata oluştu");
             }
 
             const transactionData = await transactionResponse.json();
-            
+            console.log('[Transaction] Transaction created successfully:', transactionData);
+
             toast.success(`İşlem başarıyla eklendi!`, {
                 description: `${data.assetName} - ${data.transactionType === "BUY" ? "Alış" : "Satış"}: ${data.quantity} adet @ ₺${data.pricePerUnit}`,
                 action: {
@@ -495,7 +557,7 @@ export function AddTransactionDialog({
                     onClick: () => console.log("Toast dismissed"),
                 },
             });
-            
+
             // Başarılı - transaction data'yı callback'e gönder
             const callbackData = {
                 transactionType: data.transactionType,
@@ -503,22 +565,29 @@ export function AddTransactionDialog({
                 pricePerUnit: data.pricePerUnit,
                 notes: data.notes
             };
-            
+
             reset();
             setIsOpen(false);
             if (onSuccess) {
                 onSuccess(callbackData);
             }
         } catch (error) {
-            console.error("Transaction ekleme hatası:", error);
-            const errorMessage = error instanceof Error ? error.message : "Bilinmeyen hata";
-            
+            console.error("[Transaction] Error during submission:", error);
+            console.error("[Transaction] Error stack:", error instanceof Error ? error.stack : 'No stack trace');
+
+            let errorMessage = error instanceof Error ? error.message : "Bilinmeyen hata";
+
+            // Timeout hatası kontrolü
+            if (errorMessage.includes('aborted') || errorMessage.includes('timeout')) {
+                errorMessage = "İstek zaman aşımına uğradı. Lütfen tekrar deneyin.";
+            }
+
             // Hata detaylarını daha iyi göster
             let detailedError = errorMessage;
             if (errorMessage.includes("Asset oluşturulurken hata oluştu")) {
                 detailedError = "Varlık oluşturulamadı. Lütfen varlık türü ve adını kontrol edin.";
             }
-            
+
             toast.error("İşlem eklenirken hata oluştu", {
                 description: detailedError,
                 action: {
@@ -527,6 +596,7 @@ export function AddTransactionDialog({
                 },
             });
         } finally {
+            console.log('[Transaction] Loading finished, setting isLoading to false');
             setIsLoading(false);
         }
     };

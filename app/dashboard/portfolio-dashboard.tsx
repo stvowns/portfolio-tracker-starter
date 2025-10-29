@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo, memo, useRef } from "react";
 import { AssetDetailModal } from "@/components/portfolio/asset-detail-modal";
 import { PortfolioPieChart } from "@/components/portfolio/portfolio-pie-chart";
 import { AssetGroupList } from "@/components/portfolio/asset-group-list";
@@ -105,9 +105,9 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
         if (amount === null || amount === undefined) {
             return currency === 'TRY' ? '₺0,00' : '$0.00';
         }
-        
+
         const displayAmount = currency === 'USD' ? amount / USD_TRY_RATE : amount;
-        
+
         return new Intl.NumberFormat(currency === 'TRY' ? 'tr-TR' : 'en-US', {
             style: 'currency',
             currency: currency
@@ -140,18 +140,100 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
         return labels[type] || type;
     };
 
-    const refreshData = async () => {
+    // Add caching to prevent unnecessary refreshes
+    const lastRefreshTime = useRef<number>(0);
+    const CACHE_DURATION = 30000; // 30 seconds cache
+
+    // Memoized calculations - MUST be before conditional returns
+    const assetDistribution = useMemo(() => {
+        if (!assets.length) return [];
+
+        const typeMap = new Map<string, { value: number; emoji: string; label: string }>();
+        const totalValue = summary?.totalValue || 0;
+
+        const emojiMap: Record<string, string> = {
+            'cash': '💵',
+            'gold': '🪙',
+            'silver': '🥈',
+            'stock': '📈',
+            'fund': '💰',
+            'crypto': '₿',
+            'bond': '📕',
+            'eurobond': '📕',
+            'etf': '📦',
+            'currency': '💵',
+            'commodity': '🌾',
+            'real_estate': '🏠'
+        };
+
+        assets.forEach(asset => {
+            const currentValue = asset.holdings.currentValue || 0;
+            const assetType = asset.assetType.toLowerCase();
+
+            // CASH varlıkları için currency bazlı ayrım yap
+            let mapKey = assetType;
+            if (assetType === 'cash' && asset.name) {
+                // "Nakit (TRY)" veya "Nakit TRY" -> "cash_try"
+                const currencyMatch = asset.name.match(/Nakit\s*\(?\s*(\w+)\)?/i);
+                if (currencyMatch) {
+                    mapKey = `cash_${currencyMatch[1].toLowerCase()}`;
+                }
+            }
+
+            if (!typeMap.has(mapKey)) {
+                const label = mapKey.startsWith('cash_')
+                    ? `Nakit (${mapKey.split('_')[1].toUpperCase()})`
+                    : getAssetTypeLabel(assetType);
+
+                typeMap.set(mapKey, {
+                    value: 0,
+                    emoji: emojiMap[assetType] || '📊',
+                    label
+                });
+            }
+            const current = typeMap.get(mapKey)!;
+            current.value += currentValue;
+        });
+
+        // Sort: CASH currencies first, then by percentage
+        return Array.from(typeMap.entries()).map(([type, data]) => ({
+            type,
+            value: data.value,
+            percentage: totalValue > 0 ? (data.value / totalValue) * 100 : 0,
+            emoji: data.emoji,
+            label: data.label
+        })).sort((a, b) => {
+            const aIsCash = a.type.startsWith('cash');
+            const bIsCash = b.type.startsWith('cash');
+            if (aIsCash && !bIsCash) return -1;
+            if (!aIsCash && bIsCash) return 1;
+            return b.percentage - a.percentage;
+        });
+    }, [assets, summary?.totalValue]); // Only recalculate when assets or totalValue changes
+
+    const totalTransactions = useMemo(() => {
+        return assets.reduce((sum, asset) => sum + (asset.holdings.totalTransactions || 0), 0);
+    }, [assets]); // Only recalculate when assets changes
+
+    const refreshData = useCallback(async (force = false) => {
+        const now = Date.now();
+        if (!force && now - lastRefreshTime.current < CACHE_DURATION) {
+            console.log('[Portfolio] Using cached data');
+            return;
+        }
+
         setLoading(true);
         try {
             const [assetsData, summaryData] = await Promise.all([
                 fetchPortfolioAssets(),
                 fetchPortfolioSummary()
             ]);
-            
+
             setAssets(assetsData);
             setSummary(summaryData);
             setError(null);
-            
+            lastRefreshTime.current = now;
+
             // Eğer modal açıksa ve bir asset seçiliyse, güncellenmiş bilgileri al
             if (selectedAsset && isAssetDetailOpen) {
                 const updatedAsset = assetsData.find((a: Asset) => a.id === selectedAsset.id);
@@ -165,11 +247,11 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
         } finally {
             setLoading(false);
         }
-    };
+    }, [selectedAsset, isAssetDetailOpen]);
 
     useEffect(() => {
         refreshData();
-    }, []);
+    }, [refreshData]);
 
     const handleAssetClick = (asset: Asset) => {
         setSelectedAsset(asset);
@@ -207,8 +289,8 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
                 description: `${result.data.deletedAssets} varlık ve ${result.data.deletedTransactions} işlem silindi.`,
             });
 
-            // Sayfayı yenile
-            await refreshData();
+            // Sayfayı yenle (force cache invalidation)
+            await refreshData(true);
         } catch (err) {
             console.error("Reset hatası:", err);
             const errorMessage = err instanceof Error ? err.message : "Bilinmeyen hata";
@@ -242,8 +324,8 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
                 description: `${result.data.successful} varlık güncellendi${result.data.failed > 0 ? `, ${result.data.failed} başarısız` : ''}`,
             });
 
-            // Sayfayı yenile
-            await refreshData();
+            // Sayfayı yenle (force cache invalidation)
+            await refreshData(true);
         } catch (err) {
             console.error("Sync hatası:", err);
             const errorMessage = err instanceof Error ? err.message : "Bilinmeyen hata";
@@ -266,6 +348,7 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
         );
     }
 
+    // Error handling after all hooks
     if (error && assets.length === 0) {
         return (
             <div className="px-4 lg:px-6">
@@ -278,80 +361,6 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
             </div>
         );
     }
-
-    // Asset Type Distribution with Currency breakdown for CASH
-    const getAssetDistribution = () => {
-        if (!assets.length) return [];
-        
-        const typeMap = new Map<string, { value: number; emoji: string; label: string }>();
-        const totalValue = summary?.totalValue || 0;
-        
-        const emojiMap: Record<string, string> = {
-            'cash': '💵',
-            'gold': '🪙',
-            'silver': '🥈',
-            'stock': '📈',
-            'fund': '💰',
-            'crypto': '₿',
-            'bond': '📕',
-            'eurobond': '📕',
-            'etf': '📦',
-            'currency': '💵',
-            'commodity': '🌾',
-            'real_estate': '🏠'
-        };
-        
-        assets.forEach(asset => {
-            const currentValue = asset.holdings.currentValue || 0;
-            const assetType = asset.assetType.toLowerCase();
-            
-            // CASH varlıkları için currency bazlı ayrım yap
-            let mapKey = assetType;
-            if (assetType === 'cash' && asset.name) {
-                // "Nakit (TRY)" veya "Nakit TRY" -> "cash_try"
-                const currencyMatch = asset.name.match(/Nakit\s*\(?\s*(\w+)\)?/i);
-                if (currencyMatch) {
-                    mapKey = `cash_${currencyMatch[1].toLowerCase()}`;
-                }
-            }
-            
-            if (!typeMap.has(mapKey)) {
-                const label = mapKey.startsWith('cash_') 
-                    ? `Nakit (${mapKey.split('_')[1].toUpperCase()})`
-                    : getAssetTypeLabel(assetType);
-                    
-                typeMap.set(mapKey, { 
-                    value: 0, 
-                    emoji: emojiMap[assetType] || '📊',
-                    label
-                });
-            }
-            const current = typeMap.get(mapKey)!;
-            current.value += currentValue;
-        });
-        
-        // Sort: CASH currencies first, then by percentage
-        return Array.from(typeMap.entries()).map(([type, data]) => ({
-            type,
-            value: data.value,
-            percentage: totalValue > 0 ? (data.value / totalValue) * 100 : 0,
-            emoji: data.emoji,
-            label: data.label
-        })).sort((a, b) => {
-            const aIsCash = a.type.startsWith('cash');
-            const bIsCash = b.type.startsWith('cash');
-            if (aIsCash && !bIsCash) return -1;
-            if (!aIsCash && bIsCash) return 1;
-            return b.percentage - a.percentage;
-        });
-    };
-
-    // Total Transactions Count
-    const getTotalTransactions = () => {
-        return assets.reduce((sum, asset) => sum + (asset.holdings.totalTransactions || 0), 0);
-    };
-
-    const assetDistribution = getAssetDistribution();
 
     return (
         <div className="space-y-6 px-4 lg:px-6">
@@ -384,7 +393,7 @@ const PortfolioDashboard: React.FC<PortfolioDashboardProps> = ({ currency = "TRY
                                     </div>
                                     <ul className="list-disc list-inside space-y-1 text-sm">
                                         <li>{assets.length} varlık</li>
-                                        <li>{getTotalTransactions()} işlem</li>
+                                        <li>{totalTransactions} işlem</li>
                                         <li>Toplam {formatCurrency(summary?.totalValue)} değerinde portföy</li>
                                     </ul>
                                 </AlertDialogDescription>

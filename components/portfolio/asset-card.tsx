@@ -78,66 +78,101 @@ export function AssetCard({ asset, currency, onAssetClick, dailyChange }: AssetC
     const dailyChangeColor = (dailyChange ?? 0) >= 0 ? "text-green-600" : "text-red-600";
 
     return (
-        <div className="grid grid-cols-5 gap-2" onClick={onAssetClick}>
-            {/* Asset Name */}
-            <Card className="hover:shadow-sm transition-shadow cursor-pointer">
-                <CardContent className="p-2">
-                    <div className="text-xs text-muted-foreground mb-1">Varlık</div>
-                    <div className="flex items-center justify-between">
+        <Card className="hover:shadow-md transition-all cursor-pointer bg-card/50" onClick={onAssetClick}>
+            <CardContent className="p-2">
+                {/* Header - Asset Name and Symbol */}
+                <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
                         <h3 className="font-semibold text-xs truncate" title={asset.name}>
-                            {asset.name.length > 20 ? `${asset.name.substring(0, 20)}...` : asset.name}
+                            {asset.name}
                         </h3>
                         {asset.symbol && (
-                            <Badge variant="outline" className="text-[10px] h-4 px-1 ml-1">
+                            <Badge variant="outline" className="text-[10px] h-4 px-1 shrink-0">
                                 {asset.symbol}
                             </Badge>
                         )}
                     </div>
-                </CardContent>
-            </Card>
+                    <Eye className="h-3 w-3 text-muted-foreground shrink-0" />
+                </div>
 
-            {/* Quantity */}
-            <Card className="hover:shadow-sm transition-shadow cursor-pointer">
-                <CardContent className="p-2">
-                    <div className="text-xs text-muted-foreground mb-1">Adet</div>
-                    <div className="text-xs font-semibold">
-                        {formatQuantity(asset.holdings.netQuantity)}
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Average Cost */}
-            <Card className="hover:shadow-sm transition-shadow cursor-pointer">
-                <CardContent className="p-2">
-                    <div className="text-xs text-muted-foreground mb-1">Ort. Maliyet</div>
-                    <span className="text-xs font-semibold">{formatCurrency(asset.holdings.averagePrice)}</span>
-                </CardContent>
-            </Card>
-
-            {/* Total Value */}
-            <Card className="hover:shadow-sm transition-shadow cursor-pointer">
-                <CardContent className="p-2">
-                    <div className="text-xs text-muted-foreground mb-1">Değer</div>
-                    <div className="text-sm font-bold">
-                        {formatCurrency(currentValue)}
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Profit/Loss */}
-            <Card className="hover:shadow-sm transition-shadow cursor-pointer">
-                <CardContent className="p-2">
-                    <div className="text-xs text-muted-foreground mb-1">Kar/Zarar</div>
-                    <div className={`text-xs font-bold ${profitLoss === 0 ? "text-muted-foreground" : profitColor}`}>
-                        {formatCurrency(profitLoss)}
-                    </div>
-                    {profitLossPercent !== 0 && (
-                        <div className={`text-[10px] font-medium ${profitColor} mt-0.5`}>
-                            {formatPercent(profitLossPercent)}
+                {/* Main Content - Desktop Layout */}
+                <div className="hidden sm:block">
+                    <div className="grid grid-cols-4 gap-2">
+                        {/* Quantity */}
+                        <div>
+                            <div className="text-[10px] text-muted-foreground mb-0.5">Adet</div>
+                            <div className="text-xs font-semibold">
+                                {formatQuantity(asset.holdings.netQuantity)}
+                            </div>
                         </div>
-                    )}
-                </CardContent>
-            </Card>
-        </div>
+
+                        {/* Average Cost */}
+                        <div>
+                            <div className="text-[10px] text-muted-foreground mb-0.5">Ort. Maliyet</div>
+                            <span className="text-xs font-semibold">{formatCurrency(asset.holdings.averagePrice)}</span>
+                        </div>
+
+                        {/* Total Value */}
+                        <div>
+                            <div className="text-[10px] text-muted-foreground mb-0.5">Değer</div>
+                            <div className="text-sm font-bold">
+                                {formatCurrency(currentValue)}
+                            </div>
+                        </div>
+
+                        {/* Profit/Loss */}
+                        <div>
+                            <div className="text-[10px] text-muted-foreground mb-0.5">Kar/Zarar</div>
+                            <div className={`text-xs font-bold ${profitLoss === 0 ? "text-muted-foreground" : profitColor}`}>
+                                {formatCurrency(profitLoss)}
+                            </div>
+                            {profitLossPercent !== 0 && (
+                                <div className={`text-[10px] font-medium ${profitColor} mt-0.5`}>
+                                    {formatPercent(profitLossPercent)}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Mobile Layout */}
+                <div className="sm:hidden space-y-1.5">
+                    {/* First Row - Quantity and Value */}
+                    <div className="grid grid-cols-2 gap-2">
+                        <div>
+                            <div className="text-[10px] text-muted-foreground mb-0.5">Adet</div>
+                            <div className="text-xs font-semibold">
+                                {formatQuantity(asset.holdings.netQuantity)}
+                            </div>
+                        </div>
+                        <div>
+                            <div className="text-[10px] text-muted-foreground mb-0.5">Değer</div>
+                            <div className="text-sm font-bold">
+                                {formatCurrency(currentValue)}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Second Row - Average Cost and Profit/Loss */}
+                    <div className="grid grid-cols-2 gap-2">
+                        <div>
+                            <div className="text-[10px] text-muted-foreground mb-0.5">Ort. Maliyet</div>
+                            <span className="text-xs font-semibold">{formatCurrency(asset.holdings.averagePrice)}</span>
+                        </div>
+                        <div>
+                            <div className="text-[10px] text-muted-foreground mb-0.5">Kar/Zarar</div>
+                            <div className={`text-xs font-bold ${profitLoss === 0 ? "text-muted-foreground" : profitColor}`}>
+                                {formatCurrency(profitLoss)}
+                            </div>
+                            {profitLossPercent !== 0 && (
+                                <div className={`text-[10px] font-medium ${profitColor} mt-0.5`}>
+                                    {formatPercent(profitLossPercent)}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
     );
 }

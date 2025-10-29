@@ -142,7 +142,7 @@ export async function GET(request: NextRequest) {
         );
 
         // Dönem içindeki transaction'ları al
-        let periodTransactionConditions = [
+        const periodTransactionConditions = [
             eq(transactions.userId, session.user.id)
         ];
 

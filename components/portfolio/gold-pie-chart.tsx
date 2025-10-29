@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GOLD_TYPES } from "@/lib/services/gold-price-service";
 import { Badge } from "@/components/ui/badge";
@@ -61,7 +61,7 @@ export function GoldPieChart({ goldHoldings, currency = "TRY" }: GoldPieChartPro
     }).format(displayAmount);
   };
 
-  const fetchGoldPrices = async () => {
+  const fetchGoldPrices = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch('/api/gold/prices');
@@ -79,11 +79,11 @@ export function GoldPieChart({ goldHoldings, currency = "TRY" }: GoldPieChartPro
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchGoldPrices();
-  }, []);
+  }, [fetchGoldPrices]);
 
   // Validate goldHoldings structure
   if (!Array.isArray(goldHoldings)) {
@@ -91,42 +91,44 @@ export function GoldPieChart({ goldHoldings, currency = "TRY" }: GoldPieChartPro
     return null;
   }
 
-  // Process gold holdings with current prices
-  const processedHoldings = goldHoldings.map(holding => {
-    // Log the holding structure for debugging
-    if (!holding.assetName) {
-      console.warn('Gold holding without assetName:', holding);
-      return null;
-    }
-    
-    // Find matching gold type
-    const goldType = GOLD_TYPES.find(type => 
-      holding.assetName.toLowerCase().includes(type.name.toLowerCase()) ||
-      holding.assetName.toLowerCase().includes(type.id.toLowerCase())
-    );
-    
-    if (!goldType) {
-      console.warn('No matching gold type found for:', holding.assetName);
-      return null;
-    }
+  // Process gold holdings with current prices (memoized)
+  const processedHoldings = useMemo(() => {
+    return goldHoldings.map(holding => {
+      // Log the holding structure for debugging
+      if (!holding.assetName) {
+        console.warn('Gold holding without assetName:', holding);
+        return null;
+      }
 
-    const currentPrice = goldPrices[goldType.id]?.price || 0;
-    const previousPrice = goldPrices[goldType.id]?.previousPrice || currentPrice;
-    const currentValue = currentPrice * holding.holdings.netQuantity;
-    const previousValue = previousPrice * holding.holdings.netQuantity;
-    const changeAmount = currentValue - previousValue;
-    const changePercent = previousValue > 0 ? (changeAmount / previousValue) * 100 : 0;
+      // Find matching gold type
+      const goldType = GOLD_TYPES.find(type =>
+        holding.assetName.toLowerCase().includes(type.name.toLowerCase()) ||
+        holding.assetName.toLowerCase().includes(type.id.toLowerCase())
+      );
 
-    return {
-      ...holding,
-      goldType,
-      currentValue,
-      previousValue,
-      changeAmount,
-      changePercent,
-      currentPrice
-    };
-  }).filter(Boolean);
+      if (!goldType) {
+        console.warn('No matching gold type found for:', holding.assetName);
+        return null;
+      }
+
+      const currentPrice = goldPrices[goldType.id]?.price || 0;
+      const previousPrice = goldPrices[goldType.id]?.previousPrice || currentPrice;
+      const currentValue = currentPrice * holding.holdings.netQuantity;
+      const previousValue = previousPrice * holding.holdings.netQuantity;
+      const changeAmount = currentValue - previousValue;
+      const changePercent = previousValue > 0 ? (changeAmount / previousValue) * 100 : 0;
+
+      return {
+        ...holding,
+        goldType,
+        currentValue,
+        previousValue,
+        changeAmount,
+        changePercent,
+        currentPrice
+      };
+    }).filter(Boolean);
+  }, [goldHoldings, goldPrices]);
 
   // Calculate totals
   const totalValue = processedHoldings.reduce((sum, h) => sum + (h?.currentValue || 0), 0);

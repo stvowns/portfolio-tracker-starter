@@ -224,7 +224,7 @@ export function AssetDetailModal({
                 fetchSilverPrices();
             }
         }
-    }, [isOpen, asset?.id, fetchTransactions, fetchSilverPrices, asset?.assetType]);
+    }, [isOpen, asset?.id, fetchTransactions, fetchSilverPrices]);
 
     const handleTransactionAdded = async (transactionData?: { transactionType: "BUY" | "SELL"; quantity: number; pricePerUnit: number; notes?: string }) => {
         // Transaction listesini backend'den yeniden çek (gerçek veriyi almak için)

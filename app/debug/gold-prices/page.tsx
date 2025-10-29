@@ -115,7 +115,7 @@ export default function GoldPricesPage() {
           <p>• Çeyrek altın: 1.75 gram</p>
           <p>• Yarım altın: 3.5 gram</p>
           <p>• Tam altın (Cumhuriyet): 7.216 gram</p>
-          <p>• 2.5'lik (Beşliye): 17.5 gram (5 adet çeyrek)</p>
+          <p>• 2.5&apos;lik (Beşliye): 17.5 gram (5 adet çeyrek)</p>
           <p>• Gremse: 3.5 gram (2 adet yarım)</p>
         </CardContent>
       </Card>

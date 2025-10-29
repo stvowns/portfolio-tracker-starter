@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db, portfolios, assets, transactions } from "@/db";
 import { requireAuth } from "@/lib/auth-utils";
-import { eq, sum, count, and } from "drizzle-orm";
+import { eq, sum, count, and, inArray } from "drizzle-orm";
 
 /**
  * GET /api/portfolio
@@ -39,84 +39,116 @@ export async function GET(request: NextRequest) {
             .from(assets)
             .where(eq(assets.userId, session.user.id));
 
-        // Her asset için holdings hesapla
-        const assetSummary = await Promise.all(
-            userAssets.map(async (asset) => {
-                const buyTotal = await db
-                    .select({
-                        totalQuantity: sum(transactions.quantity).mapWith(Number),
-                        totalAmount: sum(transactions.totalAmount).mapWith(Number),
-                        transactionCount: count(transactions.id).mapWith(Number)
-                    })
-                    .from(transactions)
-                    .where(and(
-                        eq(transactions.assetId, asset.id),
-                        eq(transactions.transactionType, "BUY")
-                    ));
-
-                const sellTotal = await db
-                    .select({
-                        totalQuantity: sum(transactions.quantity).mapWith(Number),
-                        totalAmount: sum(transactions.totalAmount).mapWith(Number)
-                    })
-                    .from(transactions)
-                    .where(and(
-                        eq(transactions.assetId, asset.id),
-                        eq(transactions.transactionType, "SELL")
-                    ));
-
-                const buyQuantity = buyTotal[0]?.totalQuantity || 0;
-                const sellQuantity = sellTotal[0]?.totalQuantity || 0;
-                const buyAmount = buyTotal[0]?.totalAmount || 0;
-                const sellAmount = sellTotal[0]?.totalAmount || 0;
-
-                const netQuantity = buyQuantity - sellQuantity;
-                
-                // Net maliyet = Kalan miktar × Ortalama alış fiyatı
-                const averageBuyPrice = buyQuantity > 0 ? buyAmount / buyQuantity : 0;
-                const netAmount = netQuantity * averageBuyPrice;
-                const averagePrice = averageBuyPrice; // Ortalama maliyet zaten averageBuyPrice'dir
-                
-                // Gerçekleşen kar/zarar (Realized P&L)
-                const realizedProfitLoss = sellQuantity > 0 
-                    ? sellAmount - (sellQuantity * averageBuyPrice)
-                    : 0;
-                
-                // Mevcut değer hesapla
-                let currentValue: number;
-                if (netQuantity <= 0) {
-                    currentValue = 0;
-                } else if (asset.currentPrice) {
-                    currentValue = parseFloat(asset.currentPrice.toString()) * netQuantity;
-                } else {
-                    // Fiyat yoksa ortalama maliyeti kullan (geçici çözüm)
-                    console.log(`[Portfolio API] No current price for asset ${asset.name}, using average price`);
-                    currentValue = averagePrice * netQuantity;
+        // Eğer hiç asset yoksa boş sonuç döndür
+        if (userAssets.length === 0) {
+            return Response.json({
+                success: true,
+                data: {
+                    totalValue: 0,
+                    totalCost: 0,
+                    totalProfitLoss: 0,
+                    totalProfitLossPercent: 0,
+                    totalRealizedPL: 0,
+                    totalUnrealizedPL: 0,
+                    totalAssets: 0,
+                    currency: "TRY",
+                    assets: []
                 }
+            });
+        }
 
-                // Gerçekleşmemiş kar/zarar (Unrealized P&L)
-                const unrealizedProfitLoss = netQuantity > 0 && asset.currentPrice
-                    ? currentValue - netAmount
-                    : 0;
-                
-                // Toplam kar/zarar
-                const totalProfitLoss = realizedProfitLoss + unrealizedProfitLoss;
-                
-                return {
-                    assetId: asset.id,
-                    assetName: asset.name,
-                    assetType: asset.assetType,
-                    netQuantity,
-                    netAmount,
-                    averagePrice,
-                    currentValue,
-                    realizedProfitLoss,
-                    unrealizedProfitLoss,
-                    totalProfitLoss,
-                    transactionCount: buyTotal[0]?.transactionCount || 0
-                };
+        // Asset ID'lerini al
+        const assetIds = userAssets.map(asset => asset.id);
+
+        // OPTIMIZATION: Tek sorgu ile tüm BUY transaction'ları çek (N+1 → 1)
+        const allBuyTransactions = await db
+            .select({
+                assetId: transactions.assetId,
+                totalQuantity: sum(transactions.quantity).mapWith(Number),
+                totalAmount: sum(transactions.totalAmount).mapWith(Number),
+                transactionCount: count(transactions.id).mapWith(Number)
             })
-        );
+            .from(transactions)
+            .where(and(
+                inArray(transactions.assetId, assetIds),
+                eq(transactions.transactionType, "BUY")
+            ))
+            .groupBy(transactions.assetId);
+
+        // OPTIMIZATION: Tek sorgu ile tüm SELL transaction'ları çek (N+1 → 1)
+        const allSellTransactions = await db
+            .select({
+                assetId: transactions.assetId,
+                totalQuantity: sum(transactions.quantity).mapWith(Number),
+                totalAmount: sum(transactions.totalAmount).mapWith(Number)
+            })
+            .from(transactions)
+            .where(and(
+                inArray(transactions.assetId, assetIds),
+                eq(transactions.transactionType, "SELL")
+            ))
+            .groupBy(transactions.assetId);
+
+        // Map'ler oluştur (O(1) lookup için)
+        const buyMap = new Map(allBuyTransactions.map(t => [t.assetId, t]));
+        const sellMap = new Map(allSellTransactions.map(t => [t.assetId, t]));
+
+        // Her asset için hesaplamaları yap (artık memory'de)
+        const assetSummary = userAssets.map(asset => {
+            const buyData = buyMap.get(asset.id) || { totalQuantity: 0, totalAmount: 0, transactionCount: 0 };
+            const sellData = sellMap.get(asset.id) || { totalQuantity: 0, totalAmount: 0 };
+
+            const buyQuantity = buyData.totalQuantity || 0;
+            const sellQuantity = sellData.totalQuantity || 0;
+            const buyAmount = buyData.totalAmount || 0;
+            const sellAmount = sellData.totalAmount || 0;
+
+            const netQuantity = buyQuantity - sellQuantity;
+
+            // Net maliyet = Kalan miktar × Ortalama alış fiyatı
+            const averageBuyPrice = buyQuantity > 0 ? buyAmount / buyQuantity : 0;
+            const netAmount = netQuantity * averageBuyPrice;
+            const averagePrice = averageBuyPrice;
+
+            // Gerçekleşen kar/zarar (Realized P&L)
+            const realizedProfitLoss = sellQuantity > 0
+                ? sellAmount - (sellQuantity * averageBuyPrice)
+                : 0;
+
+            // Mevcut değer hesapla
+            let currentValue: number;
+            if (netQuantity <= 0) {
+                currentValue = 0;
+            } else if (asset.currentPrice) {
+                currentValue = parseFloat(asset.currentPrice.toString()) * netQuantity;
+            } else {
+                // Fiyat yoksa ortalama maliyeti kullan (geçici çözüm)
+                console.log(`[Portfolio API] No current price for asset ${asset.name}, using average price`);
+                currentValue = averagePrice * netQuantity;
+            }
+
+            // Gerçekleşmemiş kar/zarar (Unrealized P&L)
+            const unrealizedProfitLoss = netQuantity > 0 && asset.currentPrice
+                ? currentValue - netAmount
+                : 0;
+
+            // Toplam kar/zarar
+            const totalProfitLoss = realizedProfitLoss + unrealizedProfitLoss;
+
+            return {
+                assetId: asset.id,
+                assetName: asset.name,
+                assetType: asset.assetType,
+                netQuantity,
+                netAmount,
+                averagePrice,
+                currentValue,
+                realizedProfitLoss,
+                unrealizedProfitLoss,
+                totalProfitLoss,
+                transactionCount: buyData.transactionCount || 0
+            };
+        });
 
         // Sadece holding'i olan asset'ları filtrele
         const activeAssets = assetSummary.filter(asset => asset.netQuantity > 0);

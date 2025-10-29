@@ -158,7 +158,7 @@ export async function syncAssetPrices(options: SyncOptions = {}): Promise<SyncRe
 
   let successful = 0;
   let failed = 0;
-  let skipped = 0;
+  const skipped = 0;
 
   try {
     // Create sync log

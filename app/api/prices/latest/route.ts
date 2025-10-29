@@ -207,7 +207,7 @@ async function getCurrencyPrice(symbol: string) {
         console.log(`[Currency Price] Fetching price for ${symbol}...`);
 
         let yahooSymbol = symbol;
-        let currency = 'TRY';
+        const currency = 'TRY';
         let name = '';
 
         // Handle common currency pairs

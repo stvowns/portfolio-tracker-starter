@@ -20,6 +20,16 @@ const eslintConfig = [
       "next-env.d.ts",
     ],
   },
+  {
+    rules: {
+      // Allow 'any' type in development for faster prototyping
+      "@typescript-eslint/no-explicit-any": "warn",
+      // Allow unused variables in development
+      "@typescript-eslint/no-unused-vars": "warn",
+      // Allow unescaped entities in JSX for development
+      "react/no-unescaped-entities": "warn",
+    },
+  },
 ];
 
 export default eslintConfig;

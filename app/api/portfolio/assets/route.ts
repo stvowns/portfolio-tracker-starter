@@ -80,10 +80,9 @@ export async function GET(request: NextRequest) {
             .limit(validatedQuery.limit)
             .offset(offset);
 
-        // Her asset için net holding miktarını hesapla (Buy - Sell)
-        const enrichedAssets = await Promise.all(
+        // Fallback to simple approach for debugging
+        const transactionTotals = await Promise.all(
             userAssets.map(async (asset) => {
-                // Buy ve Sell toplamlarını ayrı ayrı hesapla
                 const buyTotal = await db
                     .select({
                         totalQuantity: sum(transactions.quantity).mapWith(Number),
@@ -106,10 +105,75 @@ export async function GET(request: NextRequest) {
                         eq(transactions.transactionType, "SELL")
                     ));
 
-                const buyQuantity = buyTotal[0]?.totalQuantity || 0;
-                const sellQuantity = sellTotal[0]?.totalQuantity || 0;
-                const buyAmount = buyTotal[0]?.totalAmount || 0;
-                const sellAmount = sellTotal[0]?.totalAmount || 0;
+                return {
+                    assetId: asset.id,
+                    buyTotal: buyTotal[0] || { totalQuantity: 0, totalAmount: 0 },
+                    sellTotal: sellTotal[0] || { totalQuantity: 0, totalAmount: 0 }
+                };
+            })
+        );
+
+        // Group totals by asset for faster lookup
+        const totalsByAsset = new Map<string, { buy: { quantity: number; amount: number }, sell: { quantity: number; amount: number } }>();
+        transactionTotals.forEach(total => {
+            totalsByAsset.set(total.assetId, {
+                buy: { quantity: total.buyTotal.totalQuantity, amount: total.buyTotal.totalAmount },
+                sell: { quantity: total.sellTotal.totalQuantity, amount: total.sellTotal.totalAmount }
+            });
+        });
+
+        // Batch price fetching for all assets
+        const pricePromises = userAssets.map(async (asset) => {
+            if (asset.assetType === 'GOLD' || asset.assetType === 'SILVER') {
+                const symbol = asset.assetType === 'GOLD' ? 'GOLD' : 'SILVER';
+                try {
+                    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+                    const port = process.env.NODE_ENV === 'development' ? '3002' : '3000';
+                    const response = await fetch(`${baseUrl.replace('3000', port)}/api/prices/latest?symbol=${symbol}&type=COMMODITY`, {
+                        signal: AbortSignal.timeout(2000) // 2 second timeout
+                    });
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.success && data.data?.currentPrice) {
+                            return { assetId: asset.id, price: data.data.currentPrice };
+                        }
+                    }
+                } catch (error) {
+                    console.log(`[Batch Price] Failed for ${symbol}:`, error instanceof Error ? error.message : error);
+                }
+            }
+            return null;
+        });
+
+        // Execute all price fetches in parallel
+        const priceResults = await Promise.allSettled(pricePromises);
+        const newPrices = new Map<string, number>();
+        priceResults.forEach((result, index) => {
+            if (result.status === 'fulfilled' && result.value) {
+                newPrices.set(result.value.assetId, result.value.price);
+            }
+        });
+
+        // Update assets with new prices in batch
+        if (newPrices.size > 0) {
+            const updatePromises = Array.from(newPrices.entries()).map(([assetId, price]) =>
+                db.update(assets).set({
+                    currentPrice: price,
+                    lastUpdated: new Date()
+                }).where(eq(assets.id, assetId))
+            );
+            await Promise.all(updatePromises);
+            console.log(`[Batch Update] Updated prices for ${newPrices.size} assets`);
+        }
+
+        // Her asset için net holding miktarını hesapla (Buy - Sell)
+        const enrichedAssets = userAssets.map((asset) => {
+            const totals = totalsByAsset.get(asset.id) || { buy: { quantity: 0, amount: 0 }, sell: { quantity: 0, amount: 0 } };
+            
+            const buyQuantity = totals.buy.quantity;
+            const sellQuantity = totals.sell.quantity;
+            const buyAmount = totals.buy.amount;
+            const sellAmount = totals.sell.amount;
 
                 const netQuantity = buyQuantity - sellQuantity;
                 
@@ -123,66 +187,27 @@ export async function GET(request: NextRequest) {
                     ? sellAmount - (sellQuantity * averageBuyPrice)
                     : 0;
 
-                // Mevcut değer hesapla - HER ZAMAN CANLI FİYAT ÇEK
+                // Optimized: Use fetched prices or cached prices
                 let currentValue: number;
                 let currentPrice: number | null = null;
 
                 if (netQuantity <= 0) {
                     currentValue = 0;
                 } else {
-                    // HER ZAMAN canlı fiyatı dene çek (fiyatta güncel kalmak için)
-                    try {
-                        let symbol = asset.symbol || asset.name;
-                        let type = asset.assetType === 'GOLD' ? 'COMMODITY' :
-                                 asset.assetType === 'SILVER' ? 'COMMODITY' :
-                                 asset.assetType === 'CRYPTO' ? 'CRYPTO' :
-                                 asset.assetType === 'FUND' ? 'FUND' : 'STOCK';
-
-                        // Kripto için symbol'ı düzelt
-                        if (asset.assetType === 'CRYPTO') {
-                            if (asset.name.toLowerCase().includes("bitcoin")) {
-                                symbol = "BTC";
-                            } else if (asset.name.toLowerCase().includes("ethereum")) {
-                                symbol = "ETH";
-                            } else if (asset.symbol) {
-                                symbol = asset.symbol.replace("-USD", "").replace("USD", "");
-                            } else {
-                                symbol = asset.name.toUpperCase();
-                            }
-                        }
-
-                        // URL encode symbol to handle special characters
-                        const encodedSymbol = encodeURIComponent(symbol);
-                        const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
-                        const port = process.env.NODE_ENV === 'development' ? '3002' : '3000';
-                        const marketPriceResponse = await fetch(`${baseUrl.replace('3000', port)}/api/prices/latest?symbol=${encodedSymbol}&type=${type}`);
-                        if (marketPriceResponse.ok) {
-                            const marketData = await marketPriceResponse.json();
-                            if (marketData.success && marketData.data?.currentPrice) {
-                                currentPrice = marketData.data.currentPrice;
-                                // Asset'i HER ZAMAN güncelle (canlı fiyatı tutmak için)
-                                await db.update(assets).set({
-                                    currentPrice: currentPrice,
-                                    lastUpdated: new Date()
-                                }).where(eq(assets.id, asset.id));
-
-                                console.log(`[Assets API] Updated ${asset.name} price: ${currentPrice}`);
-                            }
-                        }
-                    } catch (error) {
-                        console.log('Market price fetch failed for', asset.name, error);
+                    // First check if we have a fresh price from batch fetch
+                    if (newPrices.has(asset.id)) {
+                        currentPrice = newPrices.get(asset.id)!;
+                        console.log(`[Assets API] Using fresh price for ${asset.name}: ${currentPrice}`);
                     }
-
-                    // Eğer canlı fiyat alınamazsa, asset'teki mevcut fiyatı kullan
-                    if (currentPrice === null && asset.currentPrice) {
+                    // Otherwise use stored price
+                    else if (asset.currentPrice) {
                         currentPrice = parseFloat(asset.currentPrice.toString());
-                        console.log(`[Assets API] Using stored price for ${asset.name}: ${currentPrice}`);
+                        console.log(`[Assets API] Using cached price for ${asset.name}: ${currentPrice}`);
                     }
-
-                    // Eğer hala currentPrice yoksa, ortalamamaliyeti kullan (son çare)
-                    if (currentPrice === null) {
-                        console.log(`[Assets API] No current price for asset ${asset.name}, using average price: ${averagePrice}`);
+                    // Finally fall back to average cost
+                    else {
                         currentPrice = averagePrice;
+                        console.log(`[Assets API] No price for ${asset.name}, using average: ${currentPrice}`);
                     }
 
                     currentValue = currentPrice * netQuantity;
@@ -213,8 +238,7 @@ export async function GET(request: NextRequest) {
                         totalTransactions: asset.transactionCount
                     }
                 };
-            })
-        );
+            });
 
         // Toplam asset sayısı
         const totalAssets = await db
@@ -391,7 +415,7 @@ export async function POST(request: NextRequest) {
             } else if (validatedData.assetType === "FUND") {
                 // TEFAS için tefasService kullan
                 const { tefasService } = await import("@/lib/services/tefas-service");
-                let symbol = validatedData.symbol;
+                const symbol = validatedData.symbol;
 
                 if (symbol) {
                     try {

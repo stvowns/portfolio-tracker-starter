@@ -4,6 +4,8 @@
  * Calculates prices for different gold types based on gram price
  */
 
+import { priceCache, CACHE_TTL } from '@/lib/cache/price-cache';
+
 export interface GoldType {
   id: string;
   name: string;
@@ -96,6 +98,17 @@ async function fetchGramGoldPrice(): Promise<{ current: number; previous: number
  * Calculate all gold prices based on gram price
  */
 export async function getAllGoldPrices(): Promise<GoldPrice[]> {
+  const cacheKey = 'gold-prices';
+
+  // Try to get from cache first
+  const cachedPrices = priceCache.get<GoldPrice[]>(cacheKey);
+  if (cachedPrices) {
+    console.log('[GoldPriceService] Returning cached gold prices');
+    return cachedPrices;
+  }
+
+  // If not in cache, fetch fresh data
+  console.log('[GoldPriceService] Fetching fresh gold prices from API');
   const gramPrices = await fetchGramGoldPrice();
 
   const prices: GoldPrice[] = GOLD_TYPES.map(goldType => {
@@ -117,6 +130,9 @@ export async function getAllGoldPrices(): Promise<GoldPrice[]> {
       }).format(currentPrice)
     };
   });
+
+  // Store in cache for future requests
+  priceCache.set(cacheKey, prices, CACHE_TTL.GOLD_PRICES);
 
   return prices;
 }
@@ -184,6 +200,17 @@ async function fetchGramSilverPrice(): Promise<number> {
  * Calculate all silver prices based on gram price
  */
 export async function getAllSilverPrices(): Promise<GoldPrice[]> {
+  const cacheKey = 'silver-prices';
+
+  // Try to get from cache first
+  const cachedPrices = priceCache.get<GoldPrice[]>(cacheKey);
+  if (cachedPrices) {
+    console.log('[GoldPriceService] Returning cached silver prices');
+    return cachedPrices;
+  }
+
+  // If not in cache, fetch fresh data
+  console.log('[GoldPriceService] Fetching fresh silver prices from API');
   const gramPrice = await fetchGramSilverPrice();
 
   const prices: GoldPrice[] = SILVER_TYPES.map(silverType => {
@@ -199,6 +226,9 @@ export async function getAllSilverPrices(): Promise<GoldPrice[]> {
       }).format(price)
     };
   });
+
+  // Store in cache for future requests
+  priceCache.set(cacheKey, prices, CACHE_TTL.SILVER_PRICES);
 
   return prices;
 }

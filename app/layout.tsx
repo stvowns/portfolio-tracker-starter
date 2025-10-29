@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Parkinsans } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ErrorBoundary } from "@/components/error-boundary";
+import { BrowserExtensionHandler } from "@/components/browser-extension-handler";
 import { Toaster } from "sonner";
 import "./globals.css";
 
@@ -42,13 +44,16 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
-          <Toaster 
-            position="top-right"
-            expand={false}
-            richColors
-            closeButton
-          />
+          <ErrorBoundary>
+            <BrowserExtensionHandler />
+            {children}
+            <Toaster 
+              position="top-right"
+              expand={false}
+              richColors
+              closeButton
+            />
+          </ErrorBoundary>
         </ThemeProvider>
       </body>
     </html>
